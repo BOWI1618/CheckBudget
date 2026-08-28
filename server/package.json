@@ -14,7 +14,8 @@
     "demo": "tsx src/db/demo.ts",
     "test:pg": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:devpass@localhost:55432/checkbudget} node --import tsx --test src/db/postgres.test.ts",
     "db:migrate": "tsx src/db/migrate.ts",
-    "test:e2e:pg": "DATABASE_URL=${DATABASE_URL:-postgres://checkbudget_app:apppass@localhost:55432/checkbudget} JWT_SECRET=test-secret-1234567890 AUTH_RATE_LIMIT_MAX=1000 API_RATE_LIMIT_MAX=5000 node --import tsx --test src/e2e.test.ts"
+    "test:e2e:pg": "DATABASE_URL=${DATABASE_URL:-postgres://checkbudget_app:apppass@localhost:55432/checkbudget} JWT_SECRET=test-secret-1234567890 AUTH_RATE_LIMIT_MAX=1000 API_RATE_LIMIT_MAX=5000 node --import tsx --test src/e2e.test.ts",
+    "test:fanout": "DATABASE_URL=${DATABASE_URL:-postgres://checkbudget_app:apppass@localhost:55432/checkbudget} DATABASE_REPLICATION_URL=${DATABASE_REPLICATION_URL:-postgres://checkbudget_replicator:replpass@localhost:55432/checkbudget} node --import tsx --test src/realtime/fanout.test.ts"
   },
   "dependencies": {
     "@checkbudget/shared": "*",

@@ -16,7 +16,9 @@ import { limitRoutes } from './modules/limits.js';
 import { goalRoutes } from './modules/goals.js';
 import { analyticsRoutes } from './modules/analytics.js';
 import { currencyRoutes } from './modules/currencies.js';
-import { attachRealtime, closeRealtime, realtimeStats } from './realtime/hub.js';
+import { attachRealtime, closeRealtime, realtimeStats, broadcast, setBudgetWatcher } from './realtime/hub.js';
+import { EventFanout, FANOUT_CHANNEL } from './realtime/fanout.js';
+import { setFanoutChannel } from './core/events.js';
 import { purgeExpiredIdempotencyKeys } from './core/idempotency.js';
 import { requestContext } from './core/context.js';
 import { unitOfWork } from './core/events.js';
@@ -136,12 +138,31 @@ async function main() {
   await app.listen({ port: config.port, host: config.host });
   attachRealtime(app.server);
 
+  /**
+   * Межинстансная рассылка событий.
+   *
+   * Включается только при заданном DATABASE_REPLICATION_URL. Без неё хаб
+   * раздаёт события своим подписчикам напрямую — этого достаточно, пока
+   * инстанс один. Как только их больше, изменение через инстанс A не дойдёт
+   * до клиентов инстанса B, и приложение сломается ровно в момент
+   * масштабирования.
+   */
+  let fanout: EventFanout | null = null;
+  if (config.replicationUrl) {
+    fanout = new EventFanout(config.replicationUrl, broadcast);
+    await fanout.start();
+    setBudgetWatcher(fanout);
+    setFanoutChannel(FANOUT_CHANNEL);
+    app.log.info('Межинстансная рассылка событий включена');
+  }
+
   const cleanup = setInterval(() => void purgeExpiredIdempotencyKeys(), 3600_000);
   cleanup.unref();
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
       closeRealtime()
+        .then(() => fanout?.close())
         .then(() => app.close())
         .then(() => db.close())
         .then(() => process.exit(0));

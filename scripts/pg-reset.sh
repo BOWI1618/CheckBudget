@@ -21,15 +21,18 @@ run_as() {  # run_as <пользователь> <файл|->
 run_as postgres devpass <<'SQL'
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'checkbudget_app') THEN
-    EXECUTE 'DROP OWNED BY checkbudget_app';
-    EXECUTE 'DROP ROLE checkbudget_app';
-  END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'checkbudget_owner') THEN
-    EXECUTE 'DROP OWNED BY checkbudget_owner';
-    EXECUTE 'DROP ROLE checkbudget_owner';
-  END IF;
+DO $$
+DECLARE r TEXT;
+BEGIN
+  -- Порядок важен: владелец удаляется последним, иначе DROP OWNED
+  -- по остальным ролям натыкается на объекты, которыми он владеет.
+  FOREACH r IN ARRAY ARRAY['checkbudget_app', 'checkbudget_replicator', 'checkbudget_owner']
+  LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('DROP OWNED BY %I', r);
+      EXECUTE format('DROP ROLE %I', r);
+    END IF;
+  END LOOP;
 END $$;
 SQL
 

@@ -12,6 +12,14 @@
 CREATE ROLE checkbudget_owner LOGIN PASSWORD 'ownerpass' NOSUPERUSER NOBYPASSRLS;
 CREATE ROLE checkbudget_app   LOGIN PASSWORD 'apppass'   NOSUPERUSER NOBYPASSRLS;
 
+-- Третья роль — для рассылки событий между инстансами.
+--
+-- Читает ТОЛЬКО журнал событий и ничего больше. Обойтись ролью приложения
+-- нельзя: рассылка происходит вне запроса пользователя, app.user_id указать
+-- неоткуда, и RLS вернул бы пустоту. Давать же приложению право читать
+-- события всех бюджетов означало бы снять весь второй рубеж защиты.
+CREATE ROLE checkbudget_replicator LOGIN PASSWORD 'replpass' NOSUPERUSER NOBYPASSRLS;
+
 ALTER SCHEMA public OWNER TO checkbudget_owner;
 
 -- Расширения ставит суперпользователь: владельцу схемы это не положено.

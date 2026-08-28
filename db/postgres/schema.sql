@@ -361,6 +361,14 @@ CREATE POLICY events_read ON events FOR SELECT
 CREATE POLICY events_insert ON events FOR INSERT
   WITH CHECK (is_member(budget_id));
 
+-- Рассылка событий между инстансами читает журнал вне контекста пользователя,
+-- поэтому ей нужна отдельная политика. Она привязана к КОНКРЕТНОЙ роли
+-- (TO checkbudget_replicator) — роль приложения под неё не подпадает
+-- и по-прежнему видит только события своих бюджетов.
+CREATE POLICY events_replication ON events FOR SELECT
+  TO checkbudget_replicator
+  USING (TRUE);
+
 -- ── Бюджеты ─────────────────────────────────────────────────────────────────
 -- RLS без FORCE: см. комментарий к is_budget_owner выше.
 

@@ -20,7 +20,8 @@
     "db:down": "docker compose down",
     "db:reset": "./scripts/pg-reset.sh",
     "test:e2e:pg": "npm run db:reset && npm run test:e2e:pg --workspace=server",
-    "test:all": "npm test && npm run db:reset && npm run test:e2e:pg --workspace=server && npm run test:pg --workspace=server"
+    "test:all": "npm test && npm run test:e2e:pg && npm run test:pg --workspace=server && npm run test:fanout",
+    "test:fanout": "npm run db:reset && npm run test:fanout --workspace=server"
   },
   "engines": {
     "node": ">=22.5"

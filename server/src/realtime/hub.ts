@@ -20,17 +20,33 @@ const clients = new Set<Client>();
 /** Индекс по бюджету: рассылка не обходит всех клиентов подряд. */
 const byBudget = new Map<string, Set<Client>>();
 
+/**
+ * Обратная связь с межинстансной рассылкой.
+ *
+ * Инстанс дочитывает из журнала только те бюджеты, на которые у него есть
+ * подписчики: читать чужие — лишняя работа и лишний трафик.
+ */
+interface BudgetWatcher {
+  track(budgetId: string, seq: number): void;
+  untrack(budgetId: string): void;
+}
+let watcher: BudgetWatcher | null = null;
+export const setBudgetWatcher = (value: BudgetWatcher | null): void => {
+  watcher = value;
+};
+
 const send = (client: Client, message: unknown): void => {
   if (client.socket.readyState === WebSocket.OPEN) {
     client.socket.send(JSON.stringify(message));
   }
 };
 
-function subscribe(client: Client, budgetId: string): void {
+function subscribe(client: Client, budgetId: string, seq: number): void {
   client.budgets.add(budgetId);
   let set = byBudget.get(budgetId);
   if (!set) byBudget.set(budgetId, (set = new Set()));
   set.add(client);
+  watcher?.track(budgetId, seq);
 }
 
 function unsubscribe(client: Client, budgetId: string): void {
@@ -38,7 +54,11 @@ function unsubscribe(client: Client, budgetId: string): void {
   const set = byBudget.get(budgetId);
   if (set) {
     set.delete(client);
-    if (set.size === 0) byBudget.delete(budgetId);
+    if (set.size === 0) {
+      byBudget.delete(budgetId);
+      // Подписчиков на этот бюджет не осталось — читать его журнал незачем.
+      watcher?.untrack(budgetId);
+    }
   }
 }
 
@@ -169,7 +189,9 @@ export function attachRealtime(server: Server): void {
         if ('forbidden' in result) {
           return send(client, { type: 'error', code: 'forbidden', budgetId });
         }
-        subscribe(client, budgetId);
+        // Позиция, с которой инстанс начинает следить за бюджетом: с неё
+        // межинстансная рассылка будет дочитывать хвост журнала.
+        subscribe(client, budgetId, result.head);
         if ('resync' in result) {
           return send(client, { type: 'resync', budgetId, seq: result.head });
         }

@@ -21,6 +21,16 @@ export const setBroadcaster = (fn: Broadcaster): void => {
   broadcaster = fn;
 };
 
+/**
+ * Когда включена межинстансная рассылка, локальный broadcast отключается:
+ * события возвращаются этому же процессу через общий канал наравне с чужими.
+ * Один путь вместо двух — он же и проверяется в разработке, а не только в проде.
+ */
+let fanoutChannel: string | null = null;
+export const setFanoutChannel = (channel: string | null): void => {
+  fanoutChannel = channel;
+};
+
 const actorNameCache = new Map<string, string>();
 
 async function actorName(userId: string): Promise<string> {
@@ -67,9 +77,37 @@ export async function unitOfWork<T>(actorId: string, fn: () => Promise<T>): Prom
   if (eventBuffer.getStore()) return fn();   // уже внутри единицы работы
 
   const collected: SyncEvent[] = [];
-  const result = await eventBuffer.run(collected, () => db.tx(fn, actorId));
-  if (collected.length > 0) broadcaster(collected);
+
+  const result = await eventBuffer.run(collected, () =>
+    db.tx(async () => {
+      const value = await fn();
+
+      // NOTIFY отправляется ВНУТРИ транзакции намеренно: Postgres доставляет
+      // уведомления только при коммите. Значит, уведомления не будет для
+      // откаченной транзакции и оно гарантированно будет для зафиксированной —
+      // без каких-либо усилий с нашей стороны.
+      if (fanoutChannel && collected.length > 0) {
+        for (const [budgetId, seq] of latestSeqPerBudget(collected)) {
+          await db.run('SELECT pg_notify($1, $2)', fanoutChannel, `${budgetId}:${seq}`);
+        }
+      }
+      return value;
+    }, actorId),
+  );
+
+  // Без межинстансной рассылки событие раздаётся своим подписчикам напрямую.
+  if (!fanoutChannel && collected.length > 0) broadcaster(collected);
   return result;
+}
+
+/** Одно уведомление на бюджет, а не на событие: важна лишь верхняя граница seq. */
+function latestSeqPerBudget(events: SyncEvent[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const event of events) {
+    const known = out.get(event.budgetId);
+    if (known === undefined || event.seq > known) out.set(event.budgetId, event.seq);
+  }
+  return out;
 }
 
 /**
