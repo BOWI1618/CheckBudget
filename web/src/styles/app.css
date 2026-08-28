@@ -105,6 +105,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
+  transition: box-shadow var(--dur) var(--ease-soft),
+              border-color var(--dur) var(--ease-soft);
 }
 .card--pad { padding: 16px; }
 
@@ -127,13 +129,71 @@
 
 /* ── Итоговые показатели ────────────────────────────────────────────── */
 
-.hero { padding: 20px 18px; }
-.hero__label { font-size: 13px; color: var(--text-muted); margin: 0 0 4px; }
-.hero__value { font-size: clamp(30px, 8vw, 40px); font-weight: 700; letter-spacing: -0.03em; margin: 0; }
-.hero__split { display: flex; gap: 18px; margin-top: 16px; }
-.hero__item { display: flex; flex-direction: column; gap: 2px; }
-.hero__item span { font-size: 12.5px; color: var(--text-muted); }
-.hero__item strong { font-size: 17px; font-weight: 640; letter-spacing: -0.01em; }
+/* ── Карточка баланса ────────────────────────────────────────────────────
+   Инвертирована относительно остального интерфейса: тёмный прямоугольник
+   на светлом фоне читается как физическая карта, а заодно решает иерархию —
+   главное число перестаёт быть одной из десятка одинаковых карточек.       */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 22px;
+  border: none;
+  color: var(--invert-text);
+  background: linear-gradient(150deg, var(--invert-from), var(--invert-to));
+  box-shadow: var(--shadow-hero);
+}
+
+/* Блик по диагонали — ровно настолько, чтобы поверхность не читалась
+   плоской заливкой. Виден на просвет, а не заявляет о себе. */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: -40% -20% auto -20%;
+  height: 180%;
+  background: radial-gradient(60% 50% at 22% 0%, rgba(255, 255, 255, 0.10), transparent 70%);
+  pointer-events: none;
+}
+.hero > * { position: relative; }
+
+.hero__label {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--invert-muted);
+  margin: 0 0 6px;
+}
+.hero__value {
+  font-size: clamp(34px, 9vw, 46px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  margin: 0;
+}
+.hero__split {
+  display: flex;
+  gap: 0;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--invert-line);
+}
+.hero__item { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hero__item + .hero__item { padding-left: 14px; border-left: 1px solid var(--invert-line); }
+.hero__item span {
+  font-size: 11.5px;
+  color: var(--invert-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hero__item strong { font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
+
+/* Смысловые цвета на тёмном нужно осветлить: те же, что на светлом фоне,
+   на графите теряют читаемость. */
+.hero .tone-income { color: #4ade8f; }
+.hero .tone-expense { color: #ff8087; }
+.hero .banner--offline { background: rgba(255, 255, 255, 0.10); color: #ffd48a; }
 
 .kpi { display: flex; flex-direction: column; gap: 5px; padding: 14px; }
 .kpi__label { font-size: 12.5px; color: var(--text-muted); }
@@ -365,7 +425,12 @@
 .bars__grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); opacity: .6; }
 .bars__group { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
 .bars__pair { display: flex; align-items: flex-end; gap: 3px; height: 100%; width: 100%; justify-content: center; }
-.bars__bar { width: 34%; max-width: 16px; border-radius: 4px 4px 0 0; min-height: 2px; transition: opacity .12s; }
+.bars__bar {
+  width: 34%; max-width: 16px; border-radius: 4px 4px 0 0; min-height: 2px;
+  /* height — то, что и растёт при появлении; без него столбцы
+     появлялись бы скачком. */
+  transition: height var(--dur-chart) var(--ease), opacity var(--dur-fast) var(--ease-soft);
+}
 .bars__bar--income { background: var(--income); }
 .bars__bar--expense { background: var(--expense); }
 .bars__tip {
@@ -435,3 +500,146 @@
   color: var(--text-subtle); pointer-events: none;
 }
 .search .input { padding-left: 38px; }
+
+/* ══ Движение ═══════════════════════════════════════════════════════════
+   Правило одно: анимируется только то, что что-то сообщает. Появление
+   элемента, изменение величины, отклик на касание. Ничего не движется
+   само по себе, ничего не отскакивает — в приложении про деньги
+   игривость читается как ненадёжность.                                   */
+
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes enter-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Появление экрана ────────────────────────────────────────────────────
+   Карточки выходят каскадом сверху вниз — так взгляд ведут по порядку
+   чтения, а не вываливают всё сразу. Задержки заданы вручную и только
+   на первые семь: дальше пользователь уже смотрит на конкретный блок,
+   и продолжение каскада превратилось бы в ожидание.                       */
+
+.shell__main > .stack > * {
+  animation: enter-up var(--dur-slow) var(--ease) both;
+}
+.shell__main > .stack > *:nth-child(1) { animation-delay: 0ms; }
+.shell__main > .stack > *:nth-child(2) { animation-delay: 45ms; }
+.shell__main > .stack > *:nth-child(3) { animation-delay: 90ms; }
+.shell__main > .stack > *:nth-child(4) { animation-delay: 130ms; }
+.shell__main > .stack > *:nth-child(5) { animation-delay: 165ms; }
+.shell__main > .stack > *:nth-child(6) { animation-delay: 195ms; }
+.shell__main > .stack > *:nth-child(n + 7) { animation-delay: 220ms; }
+
+/* ── Список операций ─────────────────────────────────────────────────────
+   Строки появляются очень быстрым каскадом: заметно как «список
+   разворачивается», но не превращается в ожидание. Больше десяти строк
+   задержку не получают — иначе низ длинного списка ждал бы секунду.       */
+
+.tx {
+  animation: enter-fade var(--dur) var(--ease-soft) both;
+  transition: background var(--dur-fast) var(--ease-soft),
+              transform var(--dur-tap) var(--ease-soft);
+}
+.tx:nth-child(2)  { animation-delay: 20ms; }
+.tx:nth-child(3)  { animation-delay: 40ms; }
+.tx:nth-child(4)  { animation-delay: 60ms; }
+.tx:nth-child(5)  { animation-delay: 80ms; }
+.tx:nth-child(6)  { animation-delay: 100ms; }
+.tx:nth-child(7)  { animation-delay: 115ms; }
+.tx:nth-child(8)  { animation-delay: 130ms; }
+.tx:nth-child(n + 9) { animation-delay: 145ms; }
+.tx:active { transform: scale(0.995); }
+
+/* ── Отклик на касание ───────────────────────────────────────────────────
+   Короткий и заметный: на телефоне это единственное подтверждение того,
+   что нажатие вообще засчитано.                                           */
+
+.chip, .segmented__item, .list-row, .sidebar__item, .tabbar__item {
+  transition: background var(--dur-fast) var(--ease-soft),
+              color var(--dur-fast) var(--ease-soft),
+              border-color var(--dur-fast) var(--ease-soft),
+              transform var(--dur-tap) var(--ease-soft);
+}
+.chip:active, .btn:active:not(:disabled) { transform: scale(0.96); }
+.tabbar__item:active { transform: scale(0.92); }
+
+/* Активная вкладка получает подсветку под иконкой — цветом одной иконки
+   состояние читается хуже, особенно на маленьком экране. */
+.tabbar__item { position: relative; }
+.tabbar__item::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 34px;
+  height: 26px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity var(--dur-fast) var(--ease-soft),
+              transform var(--dur-fast) var(--ease);
+}
+.tabbar__item.is-active::after { opacity: 1; transform: none; }
+.tabbar__item > svg, .tabbar__item { z-index: 0; }
+.tabbar__item > * { position: relative; z-index: 1; }
+
+/* ── Плавающая кнопка ────────────────────────────────────────────────────
+   Главное действие приложения. Появляется с небольшой задержкой после
+   экрана — так она читается как отдельный слой, а не часть содержимого.   */
+
+.fab {
+  animation: fab-in 420ms var(--ease) 260ms both;
+  transition: transform var(--dur-tap) var(--ease-soft),
+              box-shadow var(--dur) var(--ease-soft);
+}
+@keyframes fab-in {
+  from { opacity: 0; transform: scale(0.6) translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.fab:active { transform: scale(0.9); }
+.fab:hover { box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 52%, transparent); }
+
+/* ── Прогресс ────────────────────────────────────────────────────────────
+   Заполнение показывает величину и её изменение: при добавлении расхода
+   полоса доезжает, а не перескакивает.                                    */
+
+.progress__fill {
+  transition: width var(--dur-chart) var(--ease),
+              background var(--dur) var(--ease-soft);
+}
+
+/* ── Карточки под курсором ───────────────────────────────────────────────
+   Только на устройствах с настоящим курсором: на тач-экране :hover
+   залипает после касания и выглядит как поломка.                          */
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { box-shadow: var(--shadow-lift); border-color: var(--border-strong); }
+  .hero:hover { box-shadow: var(--shadow-hero); }
+  .tx:hover { background: var(--surface-hover); }
+  .legend__row { transition: background var(--dur-fast) var(--ease-soft); border-radius: 8px; }
+  .legend__row:hover { background: var(--surface-2); }
+}
+
+/* ── Скелетоны ───────────────────────────────────────────────────────────
+   Мягче прежнего: резкий бегущий блик сам по себе притягивает внимание
+   к тому, чего ещё нет.                                                    */
+
+.skeleton { animation: shimmer 1.6s var(--ease-soft) infinite; }
+
+/* ── Уважение к системной настройке ──────────────────────────────────────
+   Отключается всё: и переходы, и появления, и бегущий блик. Значения
+   при этом остаются конечными — интерфейс просто оказывается собранным.   */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}

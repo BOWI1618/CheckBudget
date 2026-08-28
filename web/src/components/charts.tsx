@@ -1,5 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatCompact, formatMoney } from '@checkbudget/shared';
+
+/**
+ * Появление графика.
+ *
+ * Возвращает 0 на первом кадре и 1 после — за счёт этого CSS-переход
+ * отрабатывает от нуля, и график «вырастает» вместо мгновенного появления.
+ * Отрисовка данных здесь не задерживается: сразу видно и структуру, и подписи,
+ * анимируется только геометрия.
+ *
+ * При включённом «уменьшить движение» возвращает 1 сразу.
+ */
+function useEntrance(): number {
+  const [progress, setProgress] = useState(
+    () => (typeof matchMedia === 'function'
+      && matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0),
+  );
+
+  useEffect(() => {
+    if (progress === 1) return;
+
+    // Таймер рядом с кадром — не перестраховка. В фоновой вкладке
+    // requestAnimationFrame не вызывается вообще, и график, смонтированный
+    // там, остался бы пустым: не «неанимированным», а именно пустым,
+    // потому что от прогресса зависит сама геометрия.
+    const frame = requestAnimationFrame(() => setProgress(1));
+    const fallback = setTimeout(() => setProgress(1), 60);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(fallback);
+    };
+  }, [progress]);
+
+  return progress;
+}
 
 /**
  * Графики нарисованы вручную на SVG.
@@ -21,6 +55,7 @@ export function Donut({
   slices, currency, total, size = 180, thickness = 22,
 }: { slices: Slice[]; currency: string; total: number; size?: number; thickness?: number }) {
   const [active, setActive] = useState<string | null>(null);
+  const entrance = useEntrance();
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
   const sum = slices.reduce((acc, s) => acc + s.value, 0) || 1;
@@ -46,19 +81,24 @@ export function Donut({
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
            aria-label="Структура расходов по категориям">
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          {arcs.map((arc) => (
+          {arcs.map((arc, index) => (
             <circle
               key={arc.id}
               cx={size / 2} cy={size / 2} r={radius}
               fill="none"
               stroke={arc.color}
               strokeWidth={active === arc.id ? thickness + 4 : thickness}
-              strokeDasharray={`${arc.dash} ${arc.gap}`}
+              strokeDasharray={`${arc.dash * entrance} ${circumference - arc.dash * entrance}`}
               strokeDashoffset={arc.offset}
               opacity={active && active !== arc.id ? 0.35 : 1}
               onMouseEnter={() => setActive(arc.id)}
               onMouseLeave={() => setActive(null)}
-              style={{ transition: 'opacity .15s, stroke-width .15s', cursor: 'pointer' }}
+              style={{
+                cursor: 'pointer',
+                transition: 'opacity var(--dur-fast) var(--ease-soft),'
+                  + ' stroke-width var(--dur-fast) var(--ease-soft),'
+                  + ` stroke-dasharray var(--dur-chart) var(--ease) ${index * 70}ms`,
+              }}
             />
           ))}
         </g>
@@ -100,6 +140,7 @@ export function GroupedBars({
   points, currency, height = 180,
 }: { points: BarPoint[]; currency: string; height?: number }) {
   const [active, setActive] = useState<number | null>(null);
+  const entrance = useEntrance();
   const max = Math.max(1, ...points.map((p) => Math.max(p.income, p.expense)));
   const barWidth = 100 / Math.max(points.length, 1);
 
@@ -120,8 +161,22 @@ export function GroupedBars({
             onMouseLeave={() => setActive(null)}
           >
             <div className="bars__pair">
-              <div className="bars__bar bars__bar--income" style={{ height: `${(point.income / max) * 100}%` }} />
-              <div className="bars__bar bars__bar--expense" style={{ height: `${(point.expense / max) * 100}%` }} />
+              {/* Задержка по столбцам делает движение направленным слева
+                  направо — то есть по ходу времени, а не хаотичным. */}
+              <div
+                className="bars__bar bars__bar--income"
+                style={{
+                  height: `${(point.income / max) * 100 * entrance}%`,
+                  transitionDelay: `${index * 55}ms`,
+                }}
+              />
+              <div
+                className="bars__bar bars__bar--expense"
+                style={{
+                  height: `${(point.expense / max) * 100 * entrance}%`,
+                  transitionDelay: `${index * 55 + 25}ms`,
+                }}
+              />
             </div>
             {active === index && (
               <div className="bars__tip">
@@ -146,6 +201,7 @@ export function AreaLine({
   values, labels, currency, height = 160, color = 'var(--accent)',
 }: { values: number[]; labels: string[]; currency: string; height?: number; color?: string }) {
   const [active, setActive] = useState<number | null>(null);
+  const entrance = useEntrance();
   if (values.length === 0) return null;
 
   const width = 600;
@@ -181,9 +237,24 @@ export function AreaLine({
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={area} fill="url(#areaFill)" />
-        <path d={line} fill="none" stroke={color} strokeWidth="2.5" vectorEffect="non-scaling-stroke"
-              strokeLinejoin="round" strokeLinecap="round" />
+        <path
+          d={area}
+          fill="url(#areaFill)"
+          style={{
+            opacity: entrance,
+            transition: 'opacity var(--dur-slow) var(--ease-soft) 260ms',
+          }}
+        />
+        {/* Линия прочерчивается слева направо: пунктиром во всю длину,
+            у которого смещение уезжает от полной длины к нулю. */}
+        <path
+          d={line} fill="none" stroke={color} strokeWidth="2.5"
+          vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
+          pathLength={1}
+          strokeDasharray={1}
+          strokeDashoffset={1 - entrance}
+          style={{ transition: 'stroke-dashoffset var(--dur-chart) var(--ease)' }}
+        />
         {focused && (
           <>
             <line x1={focused.x} y1="0" x2={focused.x} y2={height} stroke="var(--border-strong)" strokeWidth="1"

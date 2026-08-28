@@ -5,6 +5,7 @@ import { useApp, useLookups } from '../data/hooks.js';
 import { Card, CardTitle, EmptyState, Button, ProgressBar, Skeleton } from '../components/ui.js';
 import { Donut, Legend, GroupedBars, type Slice } from '../components/charts.js';
 import { TransactionList } from '../components/TransactionList.js';
+import { AnimatedNumber } from '../components/AnimatedNumber.js';
 import { Icon } from '../components/Icon.js';
 import { periodBounds, formatPeriod, lastMonths, shortMonth } from '../lib/dates.js';
 
@@ -107,19 +108,33 @@ export function Dashboard({
     <div className="stack">
       <Card className="hero">
         <p className="hero__label">Баланс{stats.otherCurrencies > 0 ? ` · ${base}` : ''}</p>
-        <p className="hero__value tnum">{formatMoney(stats.balance, base)}</p>
+        {/* Числа переходят, а не подменяются: изменение может прийти
+            с другого устройства, и мгновенная подмена не оставила бы следа. */}
+        <p className="hero__value">
+          <AnimatedNumber value={stats.balance} currency={base} />
+        </p>
         <div className="hero__split">
           <div className="hero__item">
             <span>Доходы за {formatPeriod(period).toLowerCase()}</span>
-            <strong className="tone-income tnum">{formatMoney(stats.income, base)}</strong>
+            <strong className="tone-income">
+              <AnimatedNumber value={stats.income} currency={base} />
+            </strong>
           </div>
           <div className="hero__item">
             <span>Расходы</span>
-            <strong className="tone-expense tnum">{formatMoney(stats.expense, base)}</strong>
+            <strong className="tone-expense">
+              <AnimatedNumber value={stats.expense} currency={base} />
+            </strong>
           </div>
           <div className="hero__item">
             <span>Разница</span>
-            <strong className="tnum">{formatMoney(stats.income - stats.expense, base, { sign: stats.income > stats.expense })}</strong>
+            <strong>
+              <AnimatedNumber
+                value={stats.income - stats.expense}
+                currency={base}
+                sign={stats.income > stats.expense}
+              />
+            </strong>
           </div>
         </div>
         {stats.unconverted > 0 && (
@@ -136,7 +151,7 @@ export function Dashboard({
             Бюджет на {formatPeriod(period).toLowerCase()}
           </CardTitle>
           <div className="limit__nums" style={{ marginBottom: 8 }}>
-            <span className="tnum">Потрачено {formatMoney(spentOnBudgeted, base)}</span>
+            <span>Потрачено <AnimatedNumber value={spentOnBudgeted} currency={base} /></span>
             <span className="tnum">из {formatMoney(budgeted, base)}</span>
           </div>
           <ProgressBar

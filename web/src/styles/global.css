@@ -1,98 +1,156 @@
 /* ── Дизайн-токены ────────────────────────────────────────────────────────
-   Одна акцентная краска, две смысловые (расход / доход) и нейтральная шкала.
-   Цвет в этом интерфейсе несёт смысл, а не украшает: если элемент цветной,
-   значит цвет что-то сообщает.                                            */
+
+   Направление — выписка на хорошей бумаге и физическая банковская карта.
+   Отсюда два решения, задающие весь остальной вид:
+
+   1. Карточка баланса ИНВЕРТИРОВАНА — тёмная на светлом фоне. Это не приём
+      ради приёма: баланс здесь буквально «карта», и тёмный прямоугольник
+      читается как она. Заодно решается иерархия — главное число перестаёт
+      быть одной из десятка одинаковых карточек.
+
+   2. Цвет несёт смысл, а не украшает. Акцент один, смысловых два
+      (расход / доход), предупреждение третье. Если элемент цветной —
+      цвет что-то сообщает.
+
+   Нейтральные тона со сдвигом в синий: чистый серый рядом с индиго
+   выглядит грязным.                                                        */
 
 :root {
-  --bg:            #f6f7f9;
+  --bg:            #f4f5f8;
   --surface:       #ffffff;
-  --surface-2:     #f1f3f6;
-  --surface-hover: #eceff3;
-  --border:        #e3e7ec;
-  --border-strong: #cfd6de;
+  --surface-2:     #eef0f4;
+  --surface-hover: #e7eaf0;
+  --border:        #e2e6ed;
+  --border-strong: #cbd2dd;
 
-  --text:          #11161d;
-  --text-muted:    #667487;
-  --text-subtle:   #93a0b1;
+  --text:          #0f1420;
+  --text-muted:    #5d6a80;
+  --text-subtle:   #8b97a9;
 
-  --accent:        #5b5bd6;
-  --accent-hover:  #4d4dc4;
-  --accent-soft:   #eeeeff;
+  --accent:        #5147e5;
+  --accent-hover:  #4038d4;
+  --accent-soft:   #ecebff;
   --on-accent:     #ffffff;
 
-  --expense:       #e5484d;
-  --expense-soft:  #ffefef;
-  --income:        #30a46c;
-  --income-soft:   #e9f7ef;
-  --warning:       #f5a524;
-  --warning-soft:  #fff5e5;
+  --expense:       #dc3b46;
+  --expense-soft:  #fdecec;
+  --income:        #12925e;
+  --income-soft:   #e4f6ed;
+  --warning:       #b26a00;
+  --warning-soft:  #fdf1dd;
+
+  /* Инвертированная поверхность — карточка баланса. */
+  --invert-from:   #171b2b;
+  --invert-to:     #232840;
+  --invert-text:   #f3f5fb;
+  --invert-muted:  #9aa4bf;
+  --invert-line:   rgba(255, 255, 255, 0.12);
 
   --radius-sm: 10px;
-  --radius:    16px;
-  --radius-lg: 22px;
+  --radius:    18px;
+  --radius-lg: 24px;
 
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
-  --shadow-pop:  0 8px 32px rgba(16, 24, 40, 0.14), 0 2px 8px rgba(16, 24, 40, 0.08);
+  /* Тени многослойные: одна размытая тень выглядит как ореол,
+     две — как настоящий подъём над поверхностью. */
+  --shadow-card: 0 1px 2px rgba(15, 20, 32, 0.05),
+                 0 2px 6px rgba(15, 20, 32, 0.04);
+  --shadow-lift: 0 2px 4px rgba(15, 20, 32, 0.06),
+                 0 12px 28px rgba(15, 20, 32, 0.10);
+  --shadow-pop:  0 4px 12px rgba(15, 20, 32, 0.10),
+                 0 24px 60px rgba(15, 20, 32, 0.22);
+  --shadow-hero: 0 2px 6px rgba(15, 20, 32, 0.14),
+                 0 18px 44px rgba(15, 20, 32, 0.24);
 
-  --nav-h: 60px;
+  /* ── Движение ────────────────────────────────────────────────────────
+     Одна кривая на всё приложение: сильный ease-out, при котором элемент
+     быстро выходит и мягко оседает. В приложении про деньги движение
+     должно читаться как точность, а не как игривость — поэтому никаких
+     отскоков и пружин.                                                   */
+  --ease:      cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-tap:   120ms;
+  --dur-fast:  180ms;
+  --dur:       300ms;
+  --dur-slow:  560ms;
+  --dur-chart: 820ms;
+
+  --nav-h: 62px;
   --safe-b: env(safe-area-inset-bottom, 0px);
 
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto,
-          'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font: 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg:            #0b0d12;
-    --surface:       #14171f;
-    --surface-2:     #1b1f29;
-    --surface-hover: #222735;
-    --border:        #262b36;
-    --border-strong: #363d4c;
+    --bg:            #0a0d14;
+    --surface:       #12161f;
+    --surface-2:     #1a1f2b;
+    --surface-hover: #222836;
+    --border:        #232936;
+    --border-strong: #333b4d;
 
-    --text:          #eef1f6;
-    --text-muted:    #9aa5b6;
-    --text-subtle:   #6b7688;
+    --text:          #eef1f7;
+    --text-muted:    #98a3b8;
+    --text-subtle:   #6a7488;
 
-    --accent:        #7c7cf0;
-    --accent-hover:  #8e8ef5;
-    --accent-soft:   #1e1f3d;
-    --on-accent:     #0b0d12;
+    --accent:        #8b83f7;
+    --accent-hover:  #9d96f9;
+    --accent-soft:   #1e1d3c;
+    --on-accent:     #0a0d14;
 
-    --expense:       #ff6369;
-    --expense-soft:  #2a1618;
-    --income:        #3dd68c;
-    --income-soft:   #10241a;
-    --warning:       #ffb224;
-    --warning-soft:  #2a1f0d;
+    --expense:       #ff6b70;
+    --expense-soft:  #2b1518;
+    --income:        #3ad68d;
+    --income-soft:   #0e2620;
+    --warning:       #f0b13d;
+    --warning-soft:  #2a2011;
 
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-pop:  0 8px 32px rgba(0, 0, 0, 0.55);
+    /* В тёмной теме карточка баланса не инвертируется, а приподнимается:
+       инверсия на тёмном фоне дала бы светлый прямоугольник, который бьёт
+       по глазам в темноте. */
+    --invert-from:   #1b2133;
+    --invert-to:     #262d45;
+    --invert-text:   #f3f5fb;
+    --invert-muted:  #9aa4bf;
+    --invert-line:   rgba(255, 255, 255, 0.10);
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 32px rgba(0, 0, 0, 0.45);
+    --shadow-pop:  0 6px 18px rgba(0, 0, 0, 0.6), 0 28px 70px rgba(0, 0, 0, 0.6);
+    --shadow-hero: 0 2px 8px rgba(0, 0, 0, 0.5), 0 20px 48px rgba(0, 0, 0, 0.55);
   }
 }
 
 :root[data-theme='dark'] {
-  --bg:            #0b0d12;
-  --surface:       #14171f;
-  --surface-2:     #1b1f29;
-  --surface-hover: #222735;
-  --border:        #262b36;
-  --border-strong: #363d4c;
-  --text:          #eef1f6;
-  --text-muted:    #9aa5b6;
-  --text-subtle:   #6b7688;
-  --accent:        #7c7cf0;
-  --accent-hover:  #8e8ef5;
-  --accent-soft:   #1e1f3d;
-  --on-accent:     #0b0d12;
-  --expense:       #ff6369;
-  --expense-soft:  #2a1618;
-  --income:        #3dd68c;
-  --income-soft:   #10241a;
-  --warning:       #ffb224;
-  --warning-soft:  #2a1f0d;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-pop:  0 8px 32px rgba(0, 0, 0, 0.55);
+  --bg:            #0a0d14;
+  --surface:       #12161f;
+  --surface-2:     #1a1f2b;
+  --surface-hover: #222836;
+  --border:        #232936;
+  --border-strong: #333b4d;
+  --text:          #eef1f7;
+  --text-muted:    #98a3b8;
+  --text-subtle:   #6a7488;
+  --accent:        #8b83f7;
+  --accent-hover:  #9d96f9;
+  --accent-soft:   #1e1d3c;
+  --on-accent:     #0a0d14;
+  --expense:       #ff6b70;
+  --expense-soft:  #2b1518;
+  --income:        #3ad68d;
+  --income-soft:   #0e2620;
+  --warning:       #f0b13d;
+  --warning-soft:  #2a2011;
+  --invert-from:   #1b2133;
+  --invert-to:     #262d45;
+  --invert-text:   #f3f5fb;
+  --invert-muted:  #9aa4bf;
+  --invert-line:   rgba(255, 255, 255, 0.10);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 32px rgba(0, 0, 0, 0.45);
+  --shadow-pop:  0 6px 18px rgba(0, 0, 0, 0.6), 0 28px 70px rgba(0, 0, 0, 0.6);
+  --shadow-hero: 0 2px 8px rgba(0, 0, 0, 0.5), 0 20px 48px rgba(0, 0, 0, 0.55);
 }
 
 * { box-sizing: border-box; }
