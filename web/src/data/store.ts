@@ -9,8 +9,25 @@ export interface LimitWithProgress extends BudgetLimit {
   unconvertedCount: number;
 }
 
+/** Месячный итог для графиков: приходит готовым, а не считается из операций. */
+export interface MonthlyTotal {
+  month: string;
+  incomeMinor: number;
+  expenseMinor: number;
+}
+
 export interface BudgetData {
   seq: number;
+  /**
+   * Итоги по месяцам за последний год.
+   *
+   * Графики за полгода строятся из них, а не из сырых операций: год операций —
+   * это больше мегабайта, который пришлось бы возить на каждый холодный старт
+   * ради двенадцати чисел.
+   */
+  monthly: MonthlyTotal[];
+  /** Окно, за которое операции реально загружены. Всё старше — по требованию. */
+  range: { from: string; to: string };
   budget: { id: string; name: string; baseCurrency: string; role: Budget['role'] };
   accounts: Account[];
   categories: Category[];
@@ -151,7 +168,8 @@ class Store {
       const hint = this.readSessionHint();
       const budgetId = hint?.currentBudgetId;
       if (hint?.user && budgetId) {
-        const cached = await idb.getSnapshot<BudgetData>(budgetId);
+        const raw = await idb.getSnapshot<BudgetData>(budgetId);
+        const cached = raw?.monthly && raw.range ? raw : null;
         this.set({
           status: 'ready',
           user: hint.user,
@@ -255,8 +273,11 @@ class Store {
 
     // Сначала показываем локальный кеш — приложение открывается мгновенно
     // и остаётся работоспособным без сети.
+    // Кеш мог быть записан прежней версией приложения, в которой ещё не было
+    // месячных итогов и границ окна. Читать его как есть — значит уронить
+    // интерфейс на пустом месте после обновления.
     const cached = await idb.getSnapshot<BudgetData>(budgetId);
-    if (cached) this.set({ data: cached });
+    if (cached?.monthly && cached.range) this.set({ data: cached });
 
     await this.refreshSnapshot(budgetId);
     void this.flushQueue();
@@ -357,6 +378,38 @@ class Store {
     }
   }
 
+  /**
+   * Догружает операции за период, которого нет в загруженном окне.
+   *
+   * Снимок отдаёт только последние месяцы. Когда пользователь листает
+   * назад, недостающее подтягивается один раз и остаётся в кеше —
+   * повторное открытие того же месяца запроса уже не делает.
+   */
+  async ensurePeriodLoaded(period: string): Promise<void> {
+    const data = this.state.data;
+    if (!data) return;
+
+    const from = `${period}-01`;
+    if (from >= data.range.from) return;
+
+    try {
+      const res = await api.get<{ items: Transaction[] }>(
+        `/budgets/${data.budget.id}/transactions?from=${from}&to=${data.range.from}&limit=500`,
+      );
+      this.patchData((current) => ({
+        ...current,
+        range: { ...current.range, from },
+        transactions: res.items.reduce(
+          (list, tx) => upsertSorted(list, tx),
+          current.transactions,
+        ),
+      }));
+    } catch {
+      // Не удалось догрузить — период просто останется пустым,
+      // а не сломает интерфейс. Повтор произойдёт при следующем открытии.
+    }
+  }
+
   private derivedTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Пересчёт производных данных с дебаунсом — пачка событий не должна давать пачку запросов. */
@@ -366,11 +419,28 @@ class Store {
       const budgetId = this.state.currentBudgetId;
       if (!budgetId) return;
       try {
-        const [accounts, limits] = await Promise.all([
+        // Месячные итоги считает сервер, поэтому после чужого изменения
+        // их нужно перечитать наравне с балансами и лимитами.
+        const monthlyFrom = new Date();
+        monthlyFrom.setMonth(monthlyFrom.getMonth() - 11, 1);
+        const [accounts, limits, monthly] = await Promise.all([
           api.get<{ items: Account[] }>(`/budgets/${budgetId}/accounts`),
           api.get<{ items: LimitWithProgress[] }>(`/budgets/${budgetId}/limits`),
+          api.get<{ items: Array<{ bucket: string; incomeMinor: number; expenseMinor: number }> }>(
+            `/budgets/${budgetId}/analytics/timeseries?granularity=month`
+            + `&from=${monthlyFrom.toISOString().slice(0, 10)}&to=9999-12-31`,
+          ),
         ]);
-        this.patchData((data) => ({ ...data, accounts: accounts.items, limits: limits.items }));
+        this.patchData((data) => ({
+          ...data,
+          accounts: accounts.items,
+          limits: limits.items,
+          monthly: monthly.items.map((r) => ({
+            month: r.bucket,
+            incomeMinor: r.incomeMinor,
+            expenseMinor: r.expenseMinor,
+          })),
+        }));
       } catch { /* обновим при следующем событии */ }
     }, 400);
   }

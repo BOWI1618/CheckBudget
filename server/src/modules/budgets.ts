@@ -9,6 +9,7 @@ import { mutate } from '../core/events.js';
 import { requireMember } from '../core/permissions.js';
 import { notFound, unprocessable, VersionConflictError, forbidden } from '../core/errors.js';
 import { newId, newInviteCode, nowIso } from '../core/ids.js';
+import { config } from '../config.js';
 import { currentSeq } from '../core/events.js';
 import { requireAuth, parseBody, idempotent } from '../http/helpers.js';
 import { seedBudgetDefaults } from './defaults.js';
@@ -16,7 +17,7 @@ import { listAccounts } from './accounts.js';
 import { listCategories } from './categories.js';
 import { listGoals } from './goals.js';
 import { listLimits } from './limits.js';
-import { toAccount, toCategory, toGoal, toTransaction, type TransactionRow } from './mappers.js';
+import { m, toAccount, toCategory, toGoal, toTransaction, type TransactionRow } from './mappers.js';
 
 const hashCode = (code: string): string =>
   createHash('sha256').update(code.toUpperCase().replace(/\s/g, '')).digest('hex');
@@ -110,8 +111,19 @@ export const budgetRoutes = async (app: FastifyInstance): Promise<void> => {
   });
 
   /**
-   * Полный снимок бюджета — единственный запрос, который нужен клиенту
-   * при холодном старте. Возвращает seq, от которого дальше идёт realtime.
+   * Снимок бюджета — единственный запрос, который нужен клиенту при холодном
+   * старте. Возвращает seq, от которого дальше идёт realtime.
+   *
+   * Операции отдаются за ОГРАНИЧЕННОЕ окно, а не за год.
+   *
+   * Год операций — это 1,4 МБ текста: на мобильной сети приложение
+   * открывалось бы секундами. При этом сырые строки нужны интерфейсу только
+   * за ближайшие месяцы (список, разбивка по категориям, частые категории
+   * при вводе), а графики за полгода строятся из МЕСЯЧНЫХ ИТОГОВ — их
+   * двенадцать строк вместо двух тысяч.
+   *
+   * Операции за пределами окна клиент дозагружает по мере надобности —
+   * когда пользователь переключается на старый месяц.
    */
   app.get<{ Params: { budgetId: string }; Querystring: { from?: string; to?: string } }>(
     '/budgets/:budgetId/snapshot',
@@ -119,7 +131,8 @@ export const budgetRoutes = async (app: FastifyInstance): Promise<void> => {
       const member = await requireMember(req.userId, req.params.budgetId);
       const now = new Date();
       const from = req.query.from
-        ?? new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+        ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - config.snapshotMonths + 1, 1))
+             .toISOString().slice(0, 10);
       const to = req.query.to ?? '9999-12-31';
 
       // seq читается ПЕРЕД данными: если между чтением seq и чтением данных
@@ -134,8 +147,29 @@ export const budgetRoutes = async (app: FastifyInstance): Promise<void> => {
         member.budgetId, from, to,
       );
 
+      // Месячные итоги для графиков: одна группировка вместо пересылки
+      // всех операций, из которых клиент считал бы то же самое.
+      const monthlyFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1))
+        .toISOString().slice(0, 10);
+      const monthly = await db.all<{ bucket: string; income: number; expense: number }>(
+        `SELECT substr(CAST(occurred_on AS TEXT), 1, 7) AS bucket,
+                COALESCE(SUM(CASE WHEN type = 'income'  THEN base_amount_minor ELSE 0 END), 0) AS income,
+                COALESCE(SUM(CASE WHEN type = 'expense' THEN base_amount_minor ELSE 0 END), 0) AS expense
+           FROM transactions
+          WHERE budget_id = ? AND deleted_at IS NULL
+            AND base_amount_minor IS NOT NULL
+            AND occurred_on >= ?
+       GROUP BY bucket ORDER BY bucket`,
+        member.budgetId, monthlyFrom,
+      );
+
       return {
         seq,
+        monthly: monthly.map((r) => ({
+          month: r.bucket,
+          incomeMinor: m(r.income),
+          expenseMinor: m(r.expense),
+        })),
         budget: {
           id: member.budgetId,
           name: member.budgetName,

@@ -19,19 +19,22 @@ export function AnalyticsScreen({ period }: { period: string }) {
   const analysis = useMemo(() => {
     if (!data) return null;
     const { from, to } = periodBounds(period);
-    const previous = periodBounds(shiftPeriod(period, -1));
 
     const inRange = (iso: string, a: string, b: string) => iso >= a && iso <= b;
 
     let current = 0;
-    let prior = 0;
+    // Прошлый месяц берётся из готовых итогов: он может лежать за границей
+    // загруженного окна операций, и подсчёт по сырым строкам дал бы ноль.
+    const previousTotals = data.monthly.find((r) => r.month === shiftPeriod(period, -1));
+    const prior = kind === 'expense'
+      ? previousTotals?.expenseMinor ?? 0
+      : previousTotals?.incomeMinor ?? 0;
     const byRoot = new Map<string, number>();
     const byDay = new Map<string, number>();
     const largest: Array<{ id: string; amount: number; label: string; color: string; icon: string; day: string }> = [];
 
     for (const tx of data.transactions) {
       if (tx.type !== kind || tx.baseAmountMinor === null) continue;
-      if (inRange(tx.occurredOn, previous.from, previous.to)) prior += tx.baseAmountMinor;
       if (!inRange(tx.occurredOn, from, to)) continue;
 
       current += tx.baseAmountMinor;
@@ -69,18 +72,12 @@ export function AnalyticsScreen({ period }: { period: string }) {
       cumulative.push(running);
     }
 
-    const months = lastMonths(6).map((m) => {
-      const bounds = periodBounds(m);
-      let income = 0;
-      let expense = 0;
-      for (const tx of data.transactions) {
-        if (tx.occurredOn < bounds.from || tx.occurredOn > bounds.to) continue;
-        if (tx.type === 'transfer' || tx.baseAmountMinor === null) continue;
-        if (tx.type === 'income') income += tx.baseAmountMinor;
-        else expense += tx.baseAmountMinor;
-      }
-      return { label: shortMonth(m), income, expense };
-    });
+    const totals = new Map(data.monthly.map((r) => [r.month, r]));
+    const months = lastMonths(6).map((m) => ({
+      label: shortMonth(m),
+      income: totals.get(m)?.incomeMinor ?? 0,
+      expense: totals.get(m)?.expenseMinor ?? 0,
+    }));
 
     return {
       current, prior, slices, months, days, cumulative,

@@ -55,6 +55,13 @@ export function App() {
 
 function Shell() {
   const [period, setPeriod] = useState(currentPeriod());
+
+  // Снимок отдаёт операции только за последние месяцы. Стоит пользователю
+  // пролистать назад — недостающее подтягивается один раз и остаётся в кеше.
+  useEffect(() => {
+    void store.ensurePeriodLoaded(period);
+  }, [period]);
+
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const navigate = useNavigate();

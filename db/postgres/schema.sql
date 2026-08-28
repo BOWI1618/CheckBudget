@@ -292,18 +292,37 @@ $$ LANGUAGE SQL STABLE;
 -- SECURITY: под FORCE политики применяются и к владельцу, и тогда политика
 -- budget_members начинает вызывать is_member(), который читает budget_members —
 -- Postgres обрывает это ошибкой «infinite recursion detected in policy».
+-- Функции возвращают МНОЖЕСТВО бюджетов, а не отвечают «да/нет» про один.
+--
+-- Разница решающая для производительности. Предикат вида `is_member(budget_id)`
+-- Postgres вычисляет ДЛЯ КАЖДОЙ СТРОКИ: на выборке в 2000 операций это
+-- 2000 вызовов функции, каждый со своим подзапросом. Замер на трёх счетах
+-- показал 0,147 мс на поиск по индексу и 75 мс на применение политики —
+-- то есть 99% времени уходило не на данные, а на проверку прав.
+--
+-- Предикат `budget_id IN (SELECT my_budget_ids())` планировщик превращает
+-- в хешированный SubPlan: функция вызывается ОДИН раз, дальше каждая строка
+-- проверяется поиском в хеш-таблице.
+--
+-- SECURITY DEFINER здесь по-прежнему обязателен: без него чтение
+-- budget_members попадало бы под собственную политику этой таблицы,
+-- и Postgres оборвал бы рекурсию ошибкой.
+CREATE OR REPLACE FUNCTION my_budget_ids() RETURNS SETOF UUID AS $$
+  SELECT budget_id FROM budget_members WHERE user_id = app_user_id();
+$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION my_writable_budget_ids() RETURNS SETOF UUID AS $$
+  SELECT budget_id FROM budget_members
+   WHERE user_id = app_user_id() AND role IN ('owner', 'editor');
+$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
+-- Одиночные проверки остаются для мест, где строка заведомо одна
+-- (политики на budgets и budget_members): там множество не даёт выигрыша,
+-- а читается хуже.
 CREATE OR REPLACE FUNCTION is_member(target UUID) RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM budget_members
      WHERE budget_id = target AND user_id = app_user_id()
-  );
-$$ LANGUAGE SQL STABLE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION can_write(target UUID) RETURNS BOOLEAN AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM budget_members
-     WHERE budget_id = target AND user_id = app_user_id()
-       AND role IN ('owner', 'editor')
   );
 $$ LANGUAGE SQL STABLE SECURITY DEFINER;
 
@@ -329,13 +348,14 @@ BEGIN
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
 
     EXECUTE format(
-      'CREATE POLICY %I_read ON %I FOR SELECT USING (is_member(budget_id))', t, t);
+      'CREATE POLICY %I_read ON %I FOR SELECT USING (budget_id IN (SELECT my_budget_ids()))', t, t);
     EXECUTE format(
-      'CREATE POLICY %I_insert ON %I FOR INSERT WITH CHECK (can_write(budget_id))', t, t);
+      'CREATE POLICY %I_insert ON %I FOR INSERT WITH CHECK (budget_id IN (SELECT my_writable_budget_ids()))', t, t);
     EXECUTE format(
-      'CREATE POLICY %I_update ON %I FOR UPDATE USING (can_write(budget_id)) WITH CHECK (can_write(budget_id))', t, t);
+      'CREATE POLICY %I_update ON %I FOR UPDATE USING (budget_id IN (SELECT my_writable_budget_ids()))'
+      || ' WITH CHECK (budget_id IN (SELECT my_writable_budget_ids()))', t, t);
     EXECUTE format(
-      'CREATE POLICY %I_delete ON %I FOR DELETE USING (can_write(budget_id))', t, t);
+      'CREATE POLICY %I_delete ON %I FOR DELETE USING (budget_id IN (SELECT my_writable_budget_ids()))', t, t);
   END LOOP;
 END $$;
 
@@ -357,9 +377,9 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY events_read ON events FOR SELECT
-  USING (is_member(budget_id));
+  USING (budget_id IN (SELECT my_budget_ids()));
 CREATE POLICY events_insert ON events FOR INSERT
-  WITH CHECK (is_member(budget_id));
+  WITH CHECK (budget_id IN (SELECT my_budget_ids()));
 
 -- Рассылка событий между инстансами читает журнал вне контекста пользователя,
 -- поэтому ей нужна отдельная политика. Она привязана к КОНКРЕТНОЙ роли

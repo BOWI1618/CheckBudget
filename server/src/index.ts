@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import compress from '@fastify/compress';
 import { config } from './config.js';
 import { db, databaseStats } from './db/index.js';
 import { seedReference } from './db/seed.js';
@@ -52,6 +53,24 @@ export async function buildApp() {
       }
     },
   );
+
+  /**
+   * Сжатие ответов.
+   *
+   * Снимок бюджета — 1,4 МБ текста, который сжимается в 73 КБ: JSON с
+   * повторяющимися ключами сжимается почти двадцатикратно. На локальной
+   * машине выигрыша не видно (узкое место там — процессор), но на мобильной
+   * сети разница между 1,4 МБ и 73 КБ — это разница между «приложение
+   * не открывается» и «открывается сразу».
+   *
+   * threshold отсекает мелкие ответы: тратить процессор на сжатие
+   * двухсотбайтового JSON бессмысленно.
+   */
+  await app.register(compress, {
+    global: true,
+    threshold: 1024,
+    encodings: ['br', 'gzip', 'deflate'],
+  });
 
   await app.register(cors, { origin: config.corsOrigins, credentials: true });
   await app.register(cookie);

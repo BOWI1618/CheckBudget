@@ -65,18 +65,14 @@ export function Dashboard({
       });
     }
 
-    const months = lastMonths(6).map((m) => {
-      const bounds = periodBounds(m);
-      let mIncome = 0;
-      let mExpense = 0;
-      for (const tx of data.transactions) {
-        if (tx.occurredOn < bounds.from || tx.occurredOn > bounds.to) continue;
-        if (tx.type === 'transfer' || tx.baseAmountMinor === null) continue;
-        if (tx.type === 'income') mIncome += tx.baseAmountMinor;
-        else mExpense += tx.baseAmountMinor;
-      }
-      return { label: shortMonth(m), income: mIncome, expense: mExpense };
-    });
+    // Итоги по месяцам приходят готовыми: считать их из сырых операций
+    // значило бы возить год данных ради двенадцати чисел.
+    const totals = new Map(data.monthly.map((r) => [r.month, r]));
+    const months = lastMonths(6).map((m) => ({
+      label: shortMonth(m),
+      income: totals.get(m)?.incomeMinor ?? 0,
+      expense: totals.get(m)?.expenseMinor ?? 0,
+    }));
 
     return { income, expense, balance, unconverted, slices: top, allSlices: slices, months, otherCurrencies, base };
   }, [data, period, categoryById]);
