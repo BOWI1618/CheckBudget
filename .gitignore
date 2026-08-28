@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.local
+
+# База данных сервера (путь якорим — иначе правило поймает web/src/data)
+/server/data/

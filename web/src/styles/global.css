@@ -1,0 +1,131 @@
+/* ── Дизайн-токены ────────────────────────────────────────────────────────
+   Одна акцентная краска, две смысловые (расход / доход) и нейтральная шкала.
+   Цвет в этом интерфейсе несёт смысл, а не украшает: если элемент цветной,
+   значит цвет что-то сообщает.                                            */
+
+:root {
+  --bg:            #f6f7f9;
+  --surface:       #ffffff;
+  --surface-2:     #f1f3f6;
+  --surface-hover: #eceff3;
+  --border:        #e3e7ec;
+  --border-strong: #cfd6de;
+
+  --text:          #11161d;
+  --text-muted:    #667487;
+  --text-subtle:   #93a0b1;
+
+  --accent:        #5b5bd6;
+  --accent-hover:  #4d4dc4;
+  --accent-soft:   #eeeeff;
+  --on-accent:     #ffffff;
+
+  --expense:       #e5484d;
+  --expense-soft:  #ffefef;
+  --income:        #30a46c;
+  --income-soft:   #e9f7ef;
+  --warning:       #f5a524;
+  --warning-soft:  #fff5e5;
+
+  --radius-sm: 10px;
+  --radius:    16px;
+  --radius-lg: 22px;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-pop:  0 8px 32px rgba(16, 24, 40, 0.14), 0 2px 8px rgba(16, 24, 40, 0.08);
+
+  --nav-h: 60px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto,
+          'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg:            #0b0d12;
+    --surface:       #14171f;
+    --surface-2:     #1b1f29;
+    --surface-hover: #222735;
+    --border:        #262b36;
+    --border-strong: #363d4c;
+
+    --text:          #eef1f6;
+    --text-muted:    #9aa5b6;
+    --text-subtle:   #6b7688;
+
+    --accent:        #7c7cf0;
+    --accent-hover:  #8e8ef5;
+    --accent-soft:   #1e1f3d;
+    --on-accent:     #0b0d12;
+
+    --expense:       #ff6369;
+    --expense-soft:  #2a1618;
+    --income:        #3dd68c;
+    --income-soft:   #10241a;
+    --warning:       #ffb224;
+    --warning-soft:  #2a1f0d;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-pop:  0 8px 32px rgba(0, 0, 0, 0.55);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg:            #0b0d12;
+  --surface:       #14171f;
+  --surface-2:     #1b1f29;
+  --surface-hover: #222735;
+  --border:        #262b36;
+  --border-strong: #363d4c;
+  --text:          #eef1f6;
+  --text-muted:    #9aa5b6;
+  --text-subtle:   #6b7688;
+  --accent:        #7c7cf0;
+  --accent-hover:  #8e8ef5;
+  --accent-soft:   #1e1f3d;
+  --on-accent:     #0b0d12;
+  --expense:       #ff6369;
+  --expense-soft:  #2a1618;
+  --income:        #3dd68c;
+  --income-soft:   #10241a;
+  --warning:       #ffb224;
+  --warning-soft:  #2a1f0d;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:  0 8px 32px rgba(0, 0, 0, 0.55);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Денежные значения выравниваются по разрядам — иначе колонки сумм
+   «пляшут» и их невозможно быстро сравнивать глазом. */
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; padding: 0; }
+a { color: inherit; text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid var(--bg); }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
