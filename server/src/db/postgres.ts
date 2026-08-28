@@ -68,8 +68,34 @@ export class PostgresDatabase implements Database {
   readonly dialect: Dialect = 'postgres';
   private readonly pool: pg.Pool;
 
-  constructor(connectionString: string, max = 10) {
-    this.pool = new Pool({ connectionString, max });
+  constructor(connectionString: string, options: {
+    max: number;
+    connectionTimeoutMillis: number;
+    idleTimeoutMillis: number;
+    statementTimeoutMs: number;
+  }) {
+    this.pool = new Pool({
+      connectionString,
+      max: options.max,
+      connectionTimeoutMillis: options.connectionTimeoutMillis,
+      idleTimeoutMillis: options.idleTimeoutMillis,
+      // Запрос, зависший в БД, держит соединение пула. Один такой запрос
+      // при нагрузке способен выесть весь пул — ограничение времени
+      // превращает это в локальную ошибку вместо отказа всего сервиса.
+      statement_timeout: options.statementTimeoutMs,
+    });
+
+    // Ошибка на простаивающем соединении приходит вне какого-либо запроса.
+    // Без обработчика Node роняет процесс целиком: разрыв связи с БД
+    // не должен убивать сервер, пул восстановит соединение сам.
+    this.pool.on('error', (err) => {
+      console.error('[postgres] ошибка простаивающего соединения:', err.message);
+    });
+  }
+
+  /** Состояние пула — для /health и диагностики исчерпания. */
+  stats(): { total: number; idle: number; waiting: number } {
+    return { total: this.pool.totalCount, idle: this.pool.idleCount, waiting: this.pool.waitingCount };
   }
 
   private async query(sql: string, params: unknown[]): Promise<pg.QueryResult> {

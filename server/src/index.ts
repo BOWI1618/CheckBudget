@@ -3,7 +3,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
-import { db } from './db/index.js';
+import { db, databaseStats } from './db/index.js';
 import { seedReference } from './db/seed.js';
 import { toHttpError } from './http/helpers.js';
 import { badRequest } from './core/errors.js';
@@ -19,6 +19,7 @@ import { currencyRoutes } from './modules/currencies.js';
 import { attachRealtime, closeRealtime, realtimeStats } from './realtime/hub.js';
 import { purgeExpiredIdempotencyKeys } from './core/idempotency.js';
 import { requestContext } from './core/context.js';
+import { unitOfWork } from './core/events.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -66,6 +67,27 @@ export async function buildApp() {
     requestContext.run({ clientId, userId: null }, done);
   });
 
+  /**
+   * Один запрос — одна транзакция.
+   *
+   * Обработчик оборачивается на этапе регистрации маршрута, а не вручную
+   * в каждом из тридцати: ручной вариант работает ровно до первого забытого
+   * места, а забытое место — это либо потерянная атомарность идемпотентности,
+   * либо, в Postgres, запрос без app.user_id, который RLS молча вернёт пустым.
+   *
+   * Неаутентифицированные маршруты (вход, регистрация) идут мимо: актора
+   * ещё нет, и они открывают транзакции сами, явно указывая пользователя.
+   */
+  app.addHook('onRoute', (route) => {
+    const original = route.handler;
+    if (typeof original !== 'function') return;
+    route.handler = function wrapped(this: unknown, req, reply) {
+      const userId = (req as { userId?: string }).userId;
+      if (!userId) return (original as Function).call(this, req, reply);
+      return unitOfWork(userId, async () => (original as Function).call(this, req, reply));
+    };
+  });
+
   app.setErrorHandler((err, req, reply) => {
     const { statusCode, body } = toHttpError(err);
     if (statusCode >= 500) req.log.error({ err }, 'unhandled error');
@@ -76,7 +98,12 @@ export async function buildApp() {
     reply.code(404).send({ error: { code: 'not_found', message: 'Маршрут не найден' } });
   });
 
-  app.get('/health', async () => ({ ok: true, ...realtimeStats() }));
+  app.get('/health', async () => ({
+    ok: true,
+    ...realtimeStats(),
+    // Растущий waiting — первый признак того, что пул стал узким местом.
+    db: databaseStats(),
+  }));
 
   await app.register(
     async (api) => {

@@ -20,13 +20,20 @@ export interface LimitProgress {
   unconverted: number;
 }
 
-export async function limitProgress(budgetId: string, categoryId: string, period: string): Promise<LimitProgress> {
-  // Границы месяца вместо извлечения месяца из даты: substr по дате
-  // в Postgres не работает, а сравнение диапазоном ещё и попадает в индекс
-  // (budget_id, occurred_on).
+/**
+ * Границы месяца вместо извлечения месяца из даты.
+ *
+ * substr по DATE в Postgres не существует, а сравнение диапазоном ещё и
+ * попадает в индекс (budget_id, occurred_on) — извлечение месяца не попало бы.
+ */
+function periodBounds(period: string): { from: string; to: string } {
   const [year, month] = period.split('-').map(Number) as [number, number];
-  const from = `${period}-01`;
-  const to = `${period}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, '0')}`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return { from: `${period}-01`, to: `${period}-${String(lastDay).padStart(2, '0')}` };
+}
+
+export async function limitProgress(budgetId: string, categoryId: string, period: string): Promise<LimitProgress> {
+  const { from, to } = periodBounds(period);
 
   const row = await db.get<{ spent: number | null; unconverted: number }>(
     `SELECT COALESCE(SUM(t.base_amount_minor), 0) AS spent,
@@ -43,24 +50,64 @@ export async function limitProgress(budgetId: string, categoryId: string, period
   return { spentMinor: row?.spent ?? 0, unconverted: row?.unconverted ?? 0 };
 }
 
+/**
+ * Список лимитов с прогрессом — двумя запросами независимо от числа лимитов.
+ *
+ * Путь сюда был через две неудачи, и обе поучительны.
+ *
+ * Сначала прогресс считался отдельным запросом на каждый лимит: классический
+ * N+1. На локальной базе незаметно, на сети — линейный рост времени ответа.
+ *
+ * Затем всё было слито в ОДИН запрос с соединением
+ * `(c.id = l.category_id OR c.parent_id = l.category_id)`. Стало медленнее
+ * в полтора раза: `OR` в условии соединения отключает индексы, и Postgres
+ * уходит в Seq Scan по всей таблице операций. «Меньше запросов» не равно
+ * «быстрее».
+ *
+ * Рабочий вариант — два запроса с равенствами, которые ложатся на индексы:
+ * лимиты отдельно, агрегат расходов по ЛИСТОВОЙ категории отдельно.
+ * Сопоставление «лимит на Еду покрывает Продукты и Рестораны» делается
+ * в коде, где оно стоит перебора десятка строк.
+ */
 export async function listLimits(budgetId: string, period: string) {
-  const rows = await db.all<LimitRow>(
+  const { from, to } = periodBounds(period);
+
+  const limits = await db.all<LimitRow>(
     'SELECT * FROM budget_limits WHERE budget_id = ? AND period = ?',
     budgetId, period,
   );
-  // Прогресс считается по каждой строке отдельным запросом.
-  // Последовательно, а не Promise.all: на одном соединении SQLite
-  // параллельность всё равно мнимая, а лимитов в месяце единицы.
-  const items = [];
-  for (const r of rows) {
-    const progress = await limitProgress(budgetId, r.category_id, r.period);
-    items.push({
-      ...toLimit(r),
-      spentMinor: m(progress.spentMinor),
-      unconvertedCount: progress.unconverted,
-    });
-  }
-  return items;
+  if (limits.length === 0) return [];
+
+  // Группировка по листовой категории вместе с её родителем: так одна выборка
+  // отвечает и на лимит по корневой категории, и на лимит по подкатегории.
+  const spent = await db.all<{
+    category_id: string; parent_id: string | null; spent: number; unconverted: number;
+  }>(
+    `SELECT t.category_id,
+            c.parent_id,
+            COALESCE(SUM(t.base_amount_minor), 0) AS spent,
+            SUM(CASE WHEN t.base_amount_minor IS NULL THEN 1 ELSE 0 END) AS unconverted
+       FROM transactions t
+       JOIN categories c ON c.id = t.category_id
+      WHERE t.budget_id = ?
+        AND t.type = 'expense'
+        AND t.deleted_at IS NULL
+        AND t.occurred_on >= ? AND t.occurred_on <= ?
+   GROUP BY t.category_id, c.parent_id`,
+    budgetId, from, to,
+  );
+
+  return limits.map((limit) => {
+    let total = 0;
+    let unconverted = 0;
+    for (const row of spent) {
+      if (row.category_id === limit.category_id || row.parent_id === limit.category_id) {
+        total += Number(row.spent ?? 0);
+        unconverted += Number(row.unconverted ?? 0);
+      }
+    }
+    return { ...toLimit(limit), spentMinor: m(total), unconvertedCount: unconverted };
+  });
 }
 
 export const limitRoutes = async (app: FastifyInstance): Promise<void> => {

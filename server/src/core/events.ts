@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { EntityType, EventOp, SyncEvent } from '@checkbudget/shared';
 import { db } from '../db/index.js';
 import { nowIso } from './ids.js';
@@ -40,10 +41,42 @@ export const invalidateActorName = (userId: string): void => {
 };
 
 /**
- * Выполняет мутацию в транзакции и рассылает события ПОСЛЕ коммита.
+ * Буфер событий текущей единицы работы.
  *
- * Событие записывается в таблицу `events` в той же транзакции, что и сама
- * мутация (transactional outbox). Это даёт две гарантии:
+ * Существует, чтобы рассылка шла ровно один раз и ровно после коммита
+ * внешней транзакции. Если бы каждый mutate() рассылал сам, вложенный вызов
+ * отправил бы события до того, как внешняя транзакция зафиксирована —
+ * и при её откате клиенты получили бы изменения, которых в базе нет.
+ */
+const eventBuffer = new AsyncLocalStorage<SyncEvent[]>();
+
+/**
+ * Единица работы: одна транзакция на запрос.
+ *
+ * Даёт три вещи, каждая из которых важна сама по себе:
+ *
+ *   1. Атомарность идемпотентности. Раньше ключ сохранялся ОТДЕЛЬНОЙ
+ *      транзакцией после мутации: падение между ними означало применённое
+ *      изменение без записи о ключе — и повтор клиента создавал дубль.
+ *      Ровно то, от чего идемпотентность и должна защищать.
+ *   2. Один `SET LOCAL app.user_id` на запрос вместо одного на каждый запрос
+ *      к БД — маршрут со снимком делал их семь.
+ *   3. Рассылка событий строго после коммита, один раз.
+ */
+export async function unitOfWork<T>(actorId: string, fn: () => Promise<T>): Promise<T> {
+  if (eventBuffer.getStore()) return fn();   // уже внутри единицы работы
+
+  const collected: SyncEvent[] = [];
+  const result = await eventBuffer.run(collected, () => db.tx(fn, actorId));
+  if (collected.length > 0) broadcaster(collected);
+  return result;
+}
+
+/**
+ * Выполняет мутацию и записывает события в журнал.
+ *
+ * Событие пишется в таблицу `events` в той же транзакции, что и сама мутация
+ * (transactional outbox). Это даёт две гарантии:
  *   — событие не может «потеряться», если broadcast не дошёл: клиент догрузит
  *     его по seq при переподключении;
  *   — событие не может «прийти раньше», чем изменение стало видимым в БД.
@@ -53,10 +86,8 @@ export const invalidateActorName = (userId: string): void => {
  * не пропустит даже чтение.
  */
 export async function mutate<T>(actorId: string, fn: (emit: Emit) => Promise<T>): Promise<T> {
-  const collected: SyncEvent[] = [];
-
-  const result = await db.tx(async () => {
-    collected.length = 0;
+  return unitOfWork(actorId, async () => {
+    const collected = eventBuffer.getStore()!;
     return fn(async (input) => {
       const createdAt = nowIso();
       const clientId = currentClientId();
@@ -90,10 +121,7 @@ export async function mutate<T>(actorId: string, fn: (emit: Emit) => Promise<T>)
         createdAt,
       });
     });
-  }, actorId);
-
-  if (collected.length > 0) broadcaster(collected);
-  return result;
+  });
 }
 
 export async function readEventsSince(

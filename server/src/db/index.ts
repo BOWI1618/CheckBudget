@@ -14,8 +14,19 @@ export type { Database, Row } from './driver.js';
  */
 export function createDatabase(): Database {
   return config.databaseUrl
-    ? new PostgresDatabase(config.databaseUrl, config.databasePoolSize)
+    ? new PostgresDatabase(config.databaseUrl, {
+        max: config.databasePoolSize,
+        connectionTimeoutMillis: config.databaseConnectionTimeoutMs,
+        idleTimeoutMillis: config.databaseIdleTimeoutMs,
+        statementTimeoutMs: config.databaseStatementTimeoutMs,
+      })
     : new SqliteDatabase(config.databaseFile);
+}
+
+/** Состояние пула, если драйвер его отдаёт. Для /health. */
+export function databaseStats(): Record<string, number> | null {
+  const candidate = db as Database & { stats?: () => Record<string, number> };
+  return candidate.stats ? candidate.stats() : null;
 }
 
 export const db: Database = createDatabase();

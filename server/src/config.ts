@@ -50,7 +50,29 @@ export const config = {
    * владелец обходит RLS везде, где не включён FORCE.
    */
   databaseUrl: env.DATABASE_URL ?? null,
+
+  /**
+   * Пул соединений.
+   *
+   * Размер подбирается не «побольше»: каждое соединение Postgres — это
+   * отдельный процесс на сервере БД, и пул больше, чем БД способна
+   * обслужить, лишь переносит очередь из приложения в базу, где она хуже
+   * видна. Практическое правило — (ядра БД × 2) + диски, делённое на число
+   * инстансов приложения.
+   */
   databasePoolSize: Number(env.DATABASE_POOL_SIZE ?? 10),
+
+  /**
+   * Сколько ждать свободного соединения. Без этого ограничения запросы
+   * при исчерпании пула висят бесконечно: клиент видит зависший интерфейс,
+   * а не ошибку, и не понимает, что происходит. Лучше быстрый отказ.
+   */
+  databaseConnectionTimeoutMs: Number(env.DATABASE_CONNECTION_TIMEOUT_MS ?? 5000),
+  databaseIdleTimeoutMs: Number(env.DATABASE_IDLE_TIMEOUT_MS ?? 30_000),
+  databaseStatementTimeoutMs: Number(env.DATABASE_STATEMENT_TIMEOUT_MS ?? 15_000),
+
+  /** Канал для рассылки событий между инстансами (Postgres LISTEN/NOTIFY). */
+  replicationUrl: env.DATABASE_REPLICATION_URL ?? null,
 
   /** В dev генерируется случайный секрет при старте: перезапуск инвалидирует токены. */
   jwtSecret: requiredInProduction('JWT_SECRET', randomBytes(32).toString('hex')),
