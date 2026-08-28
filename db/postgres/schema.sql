@@ -267,14 +267,31 @@ CREATE TABLE idempotency_keys (
 CREATE INDEX ON idempotency_keys (created_at);
 
 -- ──────────────────────── Row Level Security ────────────────────────────────
+--
+-- Модель ролей. Их ДВЕ, и это принципиально:
+--
+--   checkbudget_owner — владелец схемы. Выполняет миграции. Приложение
+--                       им не пользуется.
+--   checkbudget_app   — роль приложения. НЕ владелец, NOSUPERUSER, NOBYPASSRLS.
+--                       Именно к ней применяются политики.
+--
+-- Если приложение ходит владельцем таблиц, RLS для него не работает нигде,
+-- где не включён FORCE — то есть весь второй рубеж защиты молча исчезает.
+--
 -- Приложение выполняет `SET LOCAL app.user_id = '<uuid>'` в начале каждой
--- транзакции. Роль приложения НЕ должна быть суперпользователем и НЕ должна
--- иметь BYPASSRLS — иначе политики не применяются.
+-- транзакции; на этом значении держатся все политики.
 
 CREATE OR REPLACE FUNCTION app_user_id() RETURNS UUID AS $$
   SELECT NULLIF(current_setting('app.user_id', TRUE), '')::UUID;
 $$ LANGUAGE SQL STABLE;
 
+-- Функции проверки прав читают budget_members и budgets. Они SECURITY DEFINER,
+-- то есть выполняются от имени владельца схемы, который обходит RLS этих таблиц.
+--
+-- Именно поэтому на budget_members и budgets НЕ включается FORCE ROW LEVEL
+-- SECURITY: под FORCE политики применяются и к владельцу, и тогда политика
+-- budget_members начинает вызывать is_member(), который читает budget_members —
+-- Postgres обрывает это ошибкой «infinite recursion detected in policy».
 CREATE OR REPLACE FUNCTION is_member(target UUID) RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM budget_members
@@ -290,6 +307,19 @@ CREATE OR REPLACE FUNCTION can_write(target UUID) RETURNS BOOLEAN AS $$
   );
 $$ LANGUAGE SQL STABLE SECURITY DEFINER;
 
+-- Отдельная функция для владельца бюджета. Без неё невозможно записать
+-- первого участника: в момент создания бюджета его автор ещё не член,
+-- и политика, опирающаяся на членство, отвергла бы вставку самого себя.
+CREATE OR REPLACE FUNCTION is_budget_owner(target UUID) RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM budgets WHERE id = target AND owner_id = app_user_id()
+  );
+$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
+-- ── Данные бюджета ──────────────────────────────────────────────────────────
+-- Здесь FORCE уместен: эти таблицы не читаются функциями проверки прав,
+-- поэтому рекурсии не возникает, а защита действует даже на владельца.
+
 DO $$
 DECLARE t TEXT;
 BEGIN
@@ -297,16 +327,11 @@ BEGIN
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+
     EXECUTE format(
       'CREATE POLICY %I_read ON %I FOR SELECT USING (is_member(budget_id))', t, t);
-  END LOOP;
-
-  -- Запись разрешена только owner/editor. events пишутся тем же соединением,
-  -- что и сама мутация, поэтому политика та же.
-  FOREACH t IN ARRAY ARRAY['accounts','categories','transactions','budget_limits','goals','events']
-  LOOP
     EXECUTE format(
-      'CREATE POLICY %I_write ON %I FOR INSERT WITH CHECK (can_write(budget_id))', t, t);
+      'CREATE POLICY %I_insert ON %I FOR INSERT WITH CHECK (can_write(budget_id))', t, t);
     EXECUTE format(
       'CREATE POLICY %I_update ON %I FOR UPDATE USING (can_write(budget_id)) WITH CHECK (can_write(budget_id))', t, t);
     EXECUTE format(
@@ -314,15 +339,98 @@ BEGIN
   END LOOP;
 END $$;
 
+-- ── Бюджеты ─────────────────────────────────────────────────────────────────
+-- RLS без FORCE: см. комментарий к is_budget_owner выше.
+
 ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE budgets FORCE ROW LEVEL SECURITY;
-CREATE POLICY budgets_read ON budgets FOR SELECT USING (is_member(id));
-CREATE POLICY budgets_write ON budgets FOR UPDATE
+
+-- Владелец видит свой бюджет ДО того, как появится строка в budget_members.
+--
+-- Это не удобство, а необходимость: под RLS `INSERT ... RETURNING` прогоняет
+-- возвращаемую строку через SELECT-политику. Проверка только по членству
+-- означала бы, что создание бюджета падает с «new row violates row-level
+-- security policy» — при том, что сам INSERT политику проходит.
+-- Ошибка выглядит как проблема записи, а на деле её вызывает чтение.
+CREATE POLICY budgets_read ON budgets FOR SELECT
+  USING (is_member(id) OR owner_id = app_user_id());
+
+-- Создать бюджет может любой аутентифицированный пользователь, но только
+-- на собственное имя: owner_id обязан совпадать с текущим пользователем.
+-- Без этой политики RLS запрещал бы вставку вообще — и приложение
+-- не смогло бы создать ни одного бюджета.
+CREATE POLICY budgets_insert ON budgets FOR INSERT
+  WITH CHECK (owner_id = app_user_id());
+
+CREATE POLICY budgets_update ON budgets FOR UPDATE
   USING (owner_id = app_user_id()) WITH CHECK (owner_id = app_user_id());
 
+CREATE POLICY budgets_delete ON budgets FOR DELETE
+  USING (owner_id = app_user_id());
+
+-- ── Участники ───────────────────────────────────────────────────────────────
+
 ALTER TABLE budget_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE budget_members FORCE ROW LEVEL SECURITY;
-CREATE POLICY members_read ON budget_members FOR SELECT USING (is_member(budget_id));
+
+-- Три условия, а не одно, и каждое нужно:
+--   own    — человек всегда видит собственное членство. Без этого
+--            `INSERT ... RETURNING` при добавлении участника падает:
+--            is_member объявлена STABLE и не видит строку, которую сама
+--            же вставляемая команда ещё не зафиксировала;
+--   owner  — владелец бюджета видит весь состав, включая только что добавленных;
+--   member — участники видят друг друга.
+CREATE POLICY members_read ON budget_members FOR SELECT
+  USING (
+    user_id = app_user_id()
+    OR is_budget_owner(budget_id)
+    OR is_member(budget_id)
+  );
+
+-- Управлять составом участников может только владелец бюджета.
+-- is_budget_owner смотрит на budgets.owner_id, а не на членство, поэтому
+-- работает и в момент создания бюджета, когда участников ещё нет.
+CREATE POLICY members_insert ON budget_members FOR INSERT
+  WITH CHECK (is_budget_owner(budget_id));
+
+CREATE POLICY members_update ON budget_members FOR UPDATE
+  USING (is_budget_owner(budget_id)) WITH CHECK (is_budget_owner(budget_id));
+
+-- Владелец исключает участников; участник может выйти сам.
+CREATE POLICY members_delete ON budget_members FOR DELETE
+  USING (is_budget_owner(budget_id) OR user_id = app_user_id());
+
+-- ── Приглашения ─────────────────────────────────────────────────────────────
+-- Приглашения содержат хеш кода доступа, поэтому закрываются наравне
+-- с данными бюджета. Принять приглашение по коду можно и не будучи
+-- участником — этот путь идёт через SECURITY DEFINER функцию приложения.
+
+ALTER TABLE budget_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budget_invites FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY invites_read ON budget_invites FOR SELECT
+  USING (is_budget_owner(budget_id));
+CREATE POLICY invites_insert ON budget_invites FOR INSERT
+  WITH CHECK (is_budget_owner(budget_id));
+CREATE POLICY invites_update ON budget_invites FOR UPDATE
+  USING (is_budget_owner(budget_id)) WITH CHECK (is_budget_owner(budget_id));
+
+-- ── Персональные данные пользователя ────────────────────────────────────────
+-- Настройки, сессии и ключи идемпотентности принадлежат одному человеку
+-- и никогда не должны читаться другим — даже при ошибке в коде.
+
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings FORCE ROW LEVEL SECURITY;
+CREATE POLICY settings_own ON user_settings FOR ALL
+  USING (user_id = app_user_id()) WITH CHECK (user_id = app_user_id());
+
+ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE idempotency_keys FORCE ROW LEVEL SECURITY;
+CREATE POLICY idempotency_own ON idempotency_keys FOR ALL
+  USING (user_id = app_user_id()) WITH CHECK (user_id = app_user_id());
+
+-- refresh_tokens намеренно БЕЗ RLS: они проверяются до того, как
+-- app.user_id вообще известен — по хешу токена. Политика на user_id
+-- сделала бы вход невозможным. Доступ к таблице ограничивается тем,
+-- что обращается к ней только модуль аутентификации.
 
 -- Партиция журнала на текущий месяц. В проде создаётся плановой задачей
 -- на месяц вперёд, старые удаляются DROP TABLE по истечении ретеншена.

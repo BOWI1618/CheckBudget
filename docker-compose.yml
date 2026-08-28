@@ -1,0 +1,29 @@
+# PostgreSQL для проверки продакшен-схемы и RLS-политик.
+#
+# Приложение в MVP работает на встроенном SQLite и Docker не требует.
+# Этот файл нужен для одного: прогнать db/postgres/schema.sql на настоящем
+# Postgres и доказать, что политики действительно изолируют бюджеты.
+#
+#   docker compose up -d
+#   npm run test:pg --workspace=server
+#
+# Порт 55432, чтобы не конфликтовать с локально установленным Postgres.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: checkbudget-pg
+    environment:
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: checkbudget
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d checkbudget"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    # Данные намеренно не сохраняются между запусками: тест каждый раз
+    # пересоздаёт схему с нуля, и «грязная» база только скрывала бы ошибки.
+    tmpfs:
+      - /var/lib/postgresql/data

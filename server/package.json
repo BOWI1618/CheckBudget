@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "rm -f data/test.db data/test.db-wal data/test.db-shm && DATABASE_FILE=data/test.db JWT_SECRET=test-secret-1234567890 AUTH_RATE_LIMIT_MAX=1000 API_RATE_LIMIT_MAX=5000 node --import tsx --test src/e2e.test.ts",
     "seed": "tsx src/db/seed.ts",
-    "demo": "tsx src/db/demo.ts"
+    "demo": "tsx src/db/demo.ts",
+    "test:pg": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:devpass@localhost:55432/checkbudget} node --import tsx --test src/db/postgres.test.ts"
   },
   "dependencies": {
     "@checkbudget/shared": "*",
@@ -23,7 +24,9 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.1",
-    "esbuild": "^0.24.2"
+    "esbuild": "^0.24.2",
+    "pg": "^8.23.0"
   }
 }
