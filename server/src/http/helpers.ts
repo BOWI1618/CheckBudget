@@ -3,6 +3,7 @@ import { z, type ZodTypeAny } from 'zod';
 import { AppError, badRequest, unauthorized } from '../core/errors.js';
 import { verifyAccessToken } from '../auth/tokens.js';
 import { lookupIdempotent, saveIdempotent } from '../core/idempotency.js';
+import { setCurrentUserId } from '../core/context.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -17,6 +18,7 @@ export async function requireAuth(req: FastifyRequest): Promise<void> {
   const payload = verifyAccessToken(header.slice(7));
   if (!payload) throw unauthorized('Сессия истекла');
   req.userId = payload.sub;
+  setCurrentUserId(payload.sub);
 }
 
 /** Валидация тела запроса. Неизвестные поля отбрасываются Zod-ом. */
@@ -45,14 +47,14 @@ export async function idempotent<T>(
   if (typeof key !== 'string' || key.length < 8 || key.length > 100) {
     throw badRequest('Требуется заголовок Idempotency-Key');
   }
-  const cached = lookupIdempotent(key, req.userId, req.method, req.url, req.body);
+  const cached = await lookupIdempotent(key, req.userId, req.method, req.url, req.body);
   if (cached) {
     reply.header('Idempotency-Replayed', 'true');
     reply.code(cached.statusCode);
     return cached.body;
   }
   const body = await fn();
-  saveIdempotent(key, req.userId, req.method, req.url, req.body, successStatus, body);
+  await saveIdempotent(key, req.userId, req.method, req.url, req.body, successStatus, body);
   reply.code(successStatus);
   return body;
 }

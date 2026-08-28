@@ -323,7 +323,7 @@ $$ LANGUAGE SQL STABLE SECURITY DEFINER;
 DO $$
 DECLARE t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['accounts','categories','transactions','budget_limits','goals','events']
+  FOREACH t IN ARRAY ARRAY['accounts','categories','transactions','budget_limits','goals']
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
@@ -338,6 +338,28 @@ BEGIN
       'CREATE POLICY %I_delete ON %I FOR DELETE USING (can_write(budget_id))', t, t);
   END LOOP;
 END $$;
+
+-- ── Журнал событий ──────────────────────────────────────────────────────────
+-- Политики отличаются от остальных таблиц бюджета по двум причинам.
+--
+-- 1. Запись разрешена любому участнику, а не только owner/editor.
+--    Событие пишет сервер как побочный эффект законной операции, и такие
+--    операции есть и у наблюдателя: присоединение к бюджету по приглашению
+--    порождает событие о составе участников. Проверка can_write отвергала бы
+--    его — при том, что сама операция полностью легитимна. Изменить данные
+--    наблюдатель всё равно не может: это отсекают политики других таблиц.
+--
+-- 2. UPDATE и DELETE не разрешены НИКОМУ. Журнал append-only по существу:
+--    на его seq держится вся синхронизация, и задним числом переписанное
+--    событие означало бы разъехавшиеся клиенты. Ретеншен выполняется
+--    владельцем схемы через DROP PARTITION, а не удалением строк.
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY events_read ON events FOR SELECT
+  USING (is_member(budget_id));
+CREATE POLICY events_insert ON events FOR INSERT
+  WITH CHECK (is_member(budget_id));
 
 -- ── Бюджеты ─────────────────────────────────────────────────────────────────
 -- RLS без FORCE: см. комментарий к is_budget_owner выше.
@@ -385,11 +407,28 @@ CREATE POLICY members_read ON budget_members FOR SELECT
     OR is_member(budget_id)
   );
 
--- Управлять составом участников может только владелец бюджета.
+-- Состав участников меняет владелец бюджета — и, отдельным случаем,
+-- сам приглашённый в момент приёма кода.
+--
 -- is_budget_owner смотрит на budgets.owner_id, а не на членство, поэтому
--- работает и в момент создания бюджета, когда участников ещё нет.
+-- работает и при создании бюджета, когда участников ещё нет.
+--
+-- Второе условие закрывает приём приглашения: человек может добавить
+-- ТОЛЬКО САМ СЕБЯ и только в тот бюджет, для которого предъявил
+-- действующий код. Хеш кода лежит в переменной транзакции, поэтому
+-- подставить чужой budget_id не получится.
 CREATE POLICY members_insert ON budget_members FOR INSERT
-  WITH CHECK (is_budget_owner(budget_id));
+  WITH CHECK (
+    is_budget_owner(budget_id)
+    OR (
+      user_id = app_user_id()
+      AND EXISTS (
+        SELECT 1 FROM budget_invites i
+         WHERE i.budget_id = budget_members.budget_id
+           AND i.code_hash = current_setting('app.invite_code_hash', TRUE)
+      )
+    )
+  );
 
 CREATE POLICY members_update ON budget_members FOR UPDATE
   USING (is_budget_owner(budget_id)) WITH CHECK (is_budget_owner(budget_id));
@@ -406,12 +445,32 @@ CREATE POLICY members_delete ON budget_members FOR DELETE
 ALTER TABLE budget_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budget_invites FORCE ROW LEVEL SECURITY;
 
+-- Владелец видит приглашения своего бюджета.
+--
+-- Приглашение принимает человек, который участником ЕЩЁ НЕ является —
+-- проверка по членству отвергла бы его. Право доступа здесь даёт знание
+-- секрета: приложение кладёт хеш предъявленного кода в app.invite_code_hash
+-- на время транзакции, и видимой становится ровно одна строка — та,
+-- чей хеш уже известен. Перебрать таблицу это не позволяет.
 CREATE POLICY invites_read ON budget_invites FOR SELECT
-  USING (is_budget_owner(budget_id));
+  USING (
+    is_budget_owner(budget_id)
+    OR code_hash = current_setting('app.invite_code_hash', TRUE)
+  );
+
 CREATE POLICY invites_insert ON budget_invites FOR INSERT
   WITH CHECK (is_budget_owner(budget_id));
+
+-- UPDATE нужен и принимающему: приём увеличивает счётчик использований.
 CREATE POLICY invites_update ON budget_invites FOR UPDATE
-  USING (is_budget_owner(budget_id)) WITH CHECK (is_budget_owner(budget_id));
+  USING (
+    is_budget_owner(budget_id)
+    OR code_hash = current_setting('app.invite_code_hash', TRUE)
+  )
+  WITH CHECK (
+    is_budget_owner(budget_id)
+    OR code_hash = current_setting('app.invite_code_hash', TRUE)
+  );
 
 -- ── Персональные данные пользователя ────────────────────────────────────────
 -- Настройки, сессии и ключи идемпотентности принадлежат одному человеку

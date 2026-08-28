@@ -48,12 +48,12 @@ function detach(client: Client): void {
 }
 
 /** Членство проверяется на момент подписки, а не на момент коннекта. */
-function isMember(userId: string, budgetId: string): boolean {
-  return !!db.get(
+async function isMember(userId: string, budgetId: string): Promise<boolean> {
+  return !!(await db.get(
     `SELECT 1 FROM budget_members m JOIN budgets b ON b.id = m.budget_id
       WHERE m.budget_id = ? AND m.user_id = ? AND b.archived_at IS NULL`,
     budgetId, userId,
-  );
+  ));
 }
 
 /**
@@ -110,7 +110,7 @@ export function attachRealtime(server: Server): void {
 
     socket.on('pong', () => { client.alive = true; });
 
-    socket.on('message', (raw) => {
+    socket.on('message', async (raw) => {
       let msg: { type?: string; token?: string; budgetId?: string; sinceSeq?: number };
       try {
         msg = JSON.parse(String(raw));
@@ -135,10 +135,8 @@ export function attachRealtime(server: Server): void {
       if (!client.userId) return send(client, { type: 'error', code: 'unauthorized' });
 
       if (msg.type === 'subscribe' && msg.budgetId) {
-        if (!isMember(client.userId, msg.budgetId)) {
-          return send(client, { type: 'error', code: 'forbidden', budgetId: msg.budgetId });
-        }
-        subscribe(client, msg.budgetId);
+        const budgetId = msg.budgetId;
+        const userId = client.userId;
 
         // Различаем два случая, которые легко перепутать:
         //   sinceSeq отсутствует — клиент пуст, данные придёт брать снапшотом;
@@ -148,20 +146,34 @@ export function attachRealtime(server: Server): void {
         const since = typeof msg.sinceSeq === 'number' && Number.isFinite(msg.sinceSeq)
           ? Math.max(0, Math.trunc(msg.sinceSeq))
           : null;
-        const head = currentSeq(msg.budgetId);
 
-        if (since === null) {
-          return send(client, { type: 'subscribed', budgetId: msg.budgetId, seq: head, events: [] });
+        // Одна транзакция на всю подписку, и обязательно с указанием
+        // пользователя: WebSocket не проходит через HTTP-хук, который
+        // проставляет актора, поэтому в Postgres запросы шли бы без
+        // app.user_id — и RLS не отдал бы ни строки. Проверка членства
+        // тогда всегда была бы отрицательной.
+        const result = await db.tx(async () => {
+          if (!(await isMember(userId, budgetId))) return { forbidden: true as const };
+
+          const head = await currentSeq(budgetId);
+          if (since === null) return { head, events: [] as SyncEvent[] };
+
+          // Слишком большой разрыв дешевле закрыть полной перезагрузкой,
+          // чем проигрывать тысячи событий.
+          if ((await countEventsSince(budgetId, since)) > config.maxReplayEvents) {
+            return { head, resync: true as const };
+          }
+          return { head, events: await readEventsSince(budgetId, since, config.maxReplayEvents) };
+        }, userId);
+
+        if ('forbidden' in result) {
+          return send(client, { type: 'error', code: 'forbidden', budgetId });
         }
-
-        // Слишком большой разрыв дешевле закрыть полной перезагрузкой,
-        // чем проигрывать тысячи событий.
-        if (countEventsSince(msg.budgetId, since) > config.maxReplayEvents) {
-          return send(client, { type: 'resync', budgetId: msg.budgetId, seq: head });
+        subscribe(client, budgetId);
+        if ('resync' in result) {
+          return send(client, { type: 'resync', budgetId, seq: result.head });
         }
-
-        const events = readEventsSince(msg.budgetId, since, config.maxReplayEvents);
-        return send(client, { type: 'subscribed', budgetId: msg.budgetId, seq: head, events });
+        return send(client, { type: 'subscribed', budgetId, seq: result.head, events: result.events });
       }
 
       if (msg.type === 'unsubscribe' && msg.budgetId) {

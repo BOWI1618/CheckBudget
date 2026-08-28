@@ -42,13 +42,34 @@ npm run typecheck    # TypeScript по всем пакетам
 npm test             # арифметика денег + сквозные тесты API и realtime
 ```
 
+## Две базы данных
+
+Приложение работает и на SQLite, и на PostgreSQL — выбор по переменной окружения:
+
+```bash
+npm run dev                                   # SQLite, ноль настройки
+DATABASE_URL=postgres://... npm run dev:server  # PostgreSQL
+```
+
+Прикладной код одинаков: различия диалектов заканчиваются на границе
+`server/src/db/`. Один и тот же набор сквозных тестов прогоняется против обоих
+движков — это единственный способ не дать реализациям разъехаться.
+
+Запуск на PostgreSQL локально:
+
+```bash
+npm run db:up && npm run db:reset
+DATABASE_URL=postgres://checkbudget_app:apppass@localhost:55432/checkbudget npm run demo --workspace=server
+```
+
 ## Структура
 
 ```
 shared/   общий код клиента и сервера: деньги, валюты, Zod-схемы
-server/   Fastify + SQLite + WebSocket
+server/   Fastify + WebSocket; слой БД — два драйвера за одним интерфейсом
 web/      React + Vite, PWA
-db/       DDL и RLS-политики для PostgreSQL (продакшен)
+db/       роли, DDL и RLS-политики для PostgreSQL
+scripts/  pg-reset.sh — пересоздание локальной базы
 docs/     архитектура
 ```
 
@@ -94,7 +115,8 @@ MVP работает на SQLite и одном процессе. Переход 
 который добавляет Row Level Security как второй рубеж защиты доступа.
 Прикладной код при этом не меняется. Подробнее — раздел 2.3 архитектуры.
 
-Схема применена к PostgreSQL 16 и покрыта 26 тестами (`npm run test:pg`).
+Схема применена к PostgreSQL 16, приложение на нём работает, а 26 тестов
+(`npm run test:pg`) проверяют политики.
 Они не проверяют «DDL выполняется», а доказывают главное заявление:
 запрос без `WHERE budget_id` не отдаёт строки чужого бюджета, подмена id
 не даёт доступа, а агрегат `SUM` по всей таблице считает только свой бюджет.
@@ -102,4 +124,6 @@ MVP работает на SQLite и одном процессе. Переход 
 **Важно при развёртывании:** приложение обязано подключаться отдельной ролью,
 которая не владеет таблицами и не имеет `BYPASSRLS`. Владелец таблицы обходит
 RLS везде, где не включён `FORCE` — и защита исчезает молча, без единой ошибки
-в логах. Схема ролей описана в шапке `db/postgres/schema.sql`.
+в логах. Роли заводятся из `db/postgres/roles.sql`, права выдаются
+`db/postgres/grants.sql`, миграции применяет `npm run db:migrate --workspace=server`
+с `DATABASE_MIGRATION_URL` от имени владельца схемы.

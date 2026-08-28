@@ -26,9 +26,9 @@ export const analyticsRoutes = async (app: FastifyInstance): Promise<void> => {
   app.get<{ Params: { budgetId: string }; Querystring: { from?: string; to?: string } }>(
     '/budgets/:budgetId/analytics/summary',
     async (req) => {
-      const member = requireMember(req.userId, req.params.budgetId);
+      const member = await requireMember(req.userId, req.params.budgetId);
       const { from, to } = { ...defaultRange(), ...req.query };
-      const row = db.get<{ income: number; expense: number; unconverted: number }>(
+      const row = (await db.get<{ income: number; expense: number; unconverted: number }>(
         `SELECT
            COALESCE(SUM(CASE WHEN type = 'income'  THEN base_amount_minor ELSE 0 END), 0) AS income,
            COALESCE(SUM(CASE WHEN type = 'expense' THEN base_amount_minor ELSE 0 END), 0) AS expense,
@@ -36,7 +36,7 @@ export const analyticsRoutes = async (app: FastifyInstance): Promise<void> => {
          FROM transactions
         WHERE budget_id = ? AND deleted_at IS NULL AND occurred_on BETWEEN ? AND ?`,
         member.budgetId, from, to,
-      )!;
+      ))!;
       return {
         from, to,
         baseCurrency: member.baseCurrency,
@@ -52,14 +52,14 @@ export const analyticsRoutes = async (app: FastifyInstance): Promise<void> => {
     Params: { budgetId: string };
     Querystring: { from?: string; to?: string; kind?: 'expense' | 'income' };
   }>('/budgets/:budgetId/analytics/by-category', async (req) => {
-    const member = requireMember(req.userId, req.params.budgetId);
+    const member = await requireMember(req.userId, req.params.budgetId);
     const { from, to } = { ...defaultRange(), ...req.query };
     const kind = req.query.kind === 'income' ? 'income' : 'expense';
 
     // Группировка по КОРНЕВОЙ категории: «Продукты» и «Рестораны» сливаются
     // в «Еду». Разбивка по подкатегориям доступна отдельным запросом с
     // фильтром categoryId — так дашборд остаётся читаемым.
-    const rows = db.all<{
+    const rows = await db.all<{
       root_id: string; name: string; color: string; icon: string; total: number; cnt: number;
     }>(
       `SELECT COALESCE(p.id, c.id)     AS root_id,
@@ -74,7 +74,8 @@ export const analyticsRoutes = async (app: FastifyInstance): Promise<void> => {
         WHERE t.budget_id = ? AND t.type = ? AND t.deleted_at IS NULL
           AND t.base_amount_minor IS NOT NULL
           AND t.occurred_on BETWEEN ? AND ?
-     GROUP BY root_id
+     GROUP BY COALESCE(p.id, c.id), COALESCE(p.name, c.name),
+              COALESCE(p.color, c.color), COALESCE(p.icon, c.icon)
      ORDER BY total DESC`,
       member.budgetId, kind, from, to,
     );
@@ -97,12 +98,16 @@ export const analyticsRoutes = async (app: FastifyInstance): Promise<void> => {
     Params: { budgetId: string };
     Querystring: { from?: string; to?: string; granularity?: 'day' | 'month' };
   }>('/budgets/:budgetId/analytics/timeseries', async (req) => {
-    const member = requireMember(req.userId, req.params.budgetId);
+    const member = await requireMember(req.userId, req.params.budgetId);
     const { from, to } = { ...defaultRange(), ...req.query };
     const granularity = req.query.granularity === 'month' ? 'month' : 'day';
-    const bucket = granularity === 'month' ? "substr(occurred_on, 1, 7)" : 'occurred_on';
+    // CAST к тексту обязателен: в Postgres occurred_on имеет тип DATE,
+    // и substr по нему не существует. В SQLite приведение безвредно.
+    const bucket = granularity === 'month'
+      ? "substr(CAST(occurred_on AS TEXT), 1, 7)"
+      : 'CAST(occurred_on AS TEXT)';
 
-    const rows = db.all<{ bucket: string; income: number; expense: number }>(
+    const rows = await db.all<{ bucket: string; income: number; expense: number }>(
       `SELECT ${bucket} AS bucket,
               COALESCE(SUM(CASE WHEN type = 'income'  THEN base_amount_minor ELSE 0 END), 0) AS income,
               COALESCE(SUM(CASE WHEN type = 'expense' THEN base_amount_minor ELSE 0 END), 0) AS expense
@@ -127,10 +132,10 @@ export const analyticsRoutes = async (app: FastifyInstance): Promise<void> => {
   app.get<{ Params: { budgetId: string }; Querystring: { from?: string; to?: string; limit?: string } }>(
     '/budgets/:budgetId/analytics/top-expenses',
     async (req) => {
-      const member = requireMember(req.userId, req.params.budgetId);
+      const member = await requireMember(req.userId, req.params.budgetId);
       const { from, to } = { ...defaultRange(), ...req.query };
       const limit = Math.min(Number(req.query.limit ?? 5) || 5, 50);
-      const rows = db.all<{
+      const rows = await db.all<{
         id: string; base_amount_minor: number; amount_minor: number; currency: string;
         occurred_on: string; note: string | null; name: string; color: string; icon: string;
       }>(

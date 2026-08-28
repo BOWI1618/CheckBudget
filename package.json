@@ -17,7 +17,10 @@
     "test": "npm run test --workspace=shared && npm run test --workspace=server",
     "test:pg": "npm run test:pg --workspace=server",
     "db:up": "docker compose up -d --wait",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "db:reset": "./scripts/pg-reset.sh",
+    "test:e2e:pg": "npm run db:reset && npm run test:e2e:pg --workspace=server",
+    "test:all": "npm test && npm run db:reset && npm run test:e2e:pg --workspace=server && npm run test:pg --workspace=server"
   },
   "engines": {
     "node": ">=22.5"

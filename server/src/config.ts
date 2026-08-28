@@ -44,6 +44,14 @@ export const config = {
   host: env.HOST ?? '0.0.0.0',
   databaseFile: resolveDataPath(env.DATABASE_FILE ?? 'data/checkbudget.db'),
 
+  /**
+   * Есть DATABASE_URL — приложение работает на PostgreSQL, нет — на SQLite.
+   * Роль в этом URL не должна владеть таблицами и иметь BYPASSRLS:
+   * владелец обходит RLS везде, где не включён FORCE.
+   */
+  databaseUrl: env.DATABASE_URL ?? null,
+  databasePoolSize: Number(env.DATABASE_POOL_SIZE ?? 10),
+
   /** В dev генерируется случайный секрет при старте: перезапуск инвалидирует токены. */
   jwtSecret: requiredInProduction('JWT_SECRET', randomBytes(32).toString('hex')),
   accessTokenTtlSec: 15 * 60,

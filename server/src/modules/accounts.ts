@@ -6,7 +6,7 @@ import { requireMember } from '../core/permissions.js';
 import { notFound, unprocessable, VersionConflictError } from '../core/errors.js';
 import { newId, nowIso } from '../core/ids.js';
 import { requireAuth, parseBody, idempotent } from '../http/helpers.js';
-import { toAccount, type AccountRow } from './mappers.js';
+import { bool, toAccount, type AccountRow } from './mappers.js';
 
 /**
  * Баланс счёта ВЫЧИСЛЯЕТСЯ, а не хранится.
@@ -36,16 +36,16 @@ export const ACCOUNTS_SELECT = `
          AS balance_minor
     FROM accounts a`;
 
-export function listAccounts(budgetId: string): AccountRow[] {
-  return db.all<AccountRow>(
+export async function listAccounts(budgetId: string): Promise<AccountRow[]> {
+  return await db.all<AccountRow>(
     `${ACCOUNTS_SELECT} WHERE a.budget_id = ? AND a.deleted_at IS NULL
       ORDER BY a.is_archived, a.sort_order, a.name`,
     budgetId,
   );
 }
 
-function findAccount(budgetId: string, id: string): AccountRow {
-  const row = db.get<AccountRow>(
+async function findAccount(budgetId: string, id: string): Promise<AccountRow> {
+  const row = await db.get<AccountRow>(
     `${ACCOUNTS_SELECT} WHERE a.budget_id = ? AND a.id = ? AND a.deleted_at IS NULL`,
     budgetId,
     id,
@@ -58,33 +58,33 @@ export const accountRoutes = async (app: FastifyInstance): Promise<void> => {
   app.addHook('preHandler', requireAuth);
 
   app.get<{ Params: { budgetId: string } }>('/budgets/:budgetId/accounts', async (req) => {
-    const member = requireMember(req.userId, req.params.budgetId);
-    return { items: listAccounts(member.budgetId).map(toAccount) };
+    const member = await requireMember(req.userId, req.params.budgetId);
+    return { items: (await listAccounts(member.budgetId)).map(toAccount) };
   });
 
   app.post<{ Params: { budgetId: string } }>('/budgets/:budgetId/accounts', async (req, reply) => {
-    const member = requireMember(req.userId, req.params.budgetId, 'editor');
+    const member = await requireMember(req.userId, req.params.budgetId, 'editor');
     const input = parseBody(createAccountSchema, req.body);
     return idempotent(
       req,
       reply,
       () =>
-        mutate((emit) => {
+        mutate(member.userId, async (emit) => {
           const id = newId();
           const ts = nowIso();
-          const maxOrder = db.get<{ n: number | null }>(
+          const maxOrder = (await db.get<{ n: number | null }>(
             'SELECT MAX(sort_order) AS n FROM accounts WHERE budget_id = ?',
             member.budgetId,
-          )?.n ?? 0;
-          db.run(
+          ))?.n ?? 0;
+          await db.run(
             `INSERT INTO accounts (id, budget_id, name, type, currency, initial_balance_minor,
                                    color, icon, sort_order, created_at, updated_at, version)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,1)`,
             id, member.budgetId, input.name, input.type, input.currency,
             input.initialBalanceMinor, input.color, input.icon, maxOrder + 1, ts, ts,
           );
-          const row = findAccount(member.budgetId, id);
-          emit({
+          const row = await findAccount(member.budgetId, id);
+          await emit({
             budgetId: member.budgetId, entity: 'account', entityId: id,
             op: 'insert', actorId: member.userId, payload: toAccount(row),
           });
@@ -97,15 +97,15 @@ export const accountRoutes = async (app: FastifyInstance): Promise<void> => {
   app.patch<{ Params: { budgetId: string; id: string } }>(
     '/budgets/:budgetId/accounts/:id',
     async (req, reply) => {
-      const member = requireMember(req.userId, req.params.budgetId, 'editor');
+      const member = await requireMember(req.userId, req.params.budgetId, 'editor');
       const input = parseBody(updateAccountSchema, req.body);
       const { id } = req.params;
       return idempotent(req, reply, () =>
-        mutate((emit) => {
-          const current = findAccount(member.budgetId, id);
+        mutate(member.userId, async (emit) => {
+          const current = await findAccount(member.budgetId, id);
           if (current.version !== input.version) throw new VersionConflictError(toAccount(current));
           const ts = nowIso();
-          const { changes } = db.run(
+          const { changes } = await db.run(
             `UPDATE accounts SET name = ?, type = ?, initial_balance_minor = ?, color = ?, icon = ?,
                                  is_archived = ?, updated_at = ?, version = version + 1
               WHERE budget_id = ? AND id = ? AND version = ?`,
@@ -114,12 +114,12 @@ export const accountRoutes = async (app: FastifyInstance): Promise<void> => {
             input.initialBalanceMinor ?? current.initial_balance_minor,
             input.color ?? current.color,
             input.icon ?? current.icon,
-            input.isArchived === undefined ? current.is_archived : input.isArchived ? 1 : 0,
+            input.isArchived === undefined ? bool(current.is_archived) : input.isArchived,
             ts, member.budgetId, id, input.version,
           );
-          if (changes === 0) throw new VersionConflictError(toAccount(findAccount(member.budgetId, id)));
-          const row = findAccount(member.budgetId, id);
-          emit({
+          if (changes === 0) throw new VersionConflictError(toAccount(await findAccount(member.budgetId, id)));
+          const row = await findAccount(member.budgetId, id);
+          await emit({
             budgetId: member.budgetId, entity: 'account', entityId: id,
             op: 'update', actorId: member.userId, payload: toAccount(row),
           });
@@ -132,22 +132,22 @@ export const accountRoutes = async (app: FastifyInstance): Promise<void> => {
   app.delete<{ Params: { budgetId: string; id: string } }>(
     '/budgets/:budgetId/accounts/:id',
     async (req, reply) => {
-      const member = requireMember(req.userId, req.params.budgetId, 'editor');
+      const member = await requireMember(req.userId, req.params.budgetId, 'editor');
       const { version } = parseBody(deleteSchema, req.body);
       const { id } = req.params;
       return idempotent(req, reply, () =>
-        mutate((emit) => {
-          const current = findAccount(member.budgetId, id);
+        mutate(member.userId, async (emit) => {
+          const current = await findAccount(member.budgetId, id);
           if (current.version !== version) throw new VersionConflictError(toAccount(current));
 
           // Счёт с операциями удалять нельзя — это уничтожило бы историю.
           // Вместо удаления предлагается архивация: счёт исчезает из выбора,
           // но операции и балансы остаются корректными.
-          const used = db.get<{ n: number }>(
+          const used = (await db.get<{ n: number }>(
             `SELECT COUNT(*) AS n FROM transactions
               WHERE budget_id = ? AND (account_id = ? OR counter_account_id = ?) AND deleted_at IS NULL`,
             member.budgetId, id, id,
-          )?.n ?? 0;
+          ))?.n ?? 0;
           if (used > 0) {
             throw unprocessable(
               'account_in_use',
@@ -156,12 +156,12 @@ export const accountRoutes = async (app: FastifyInstance): Promise<void> => {
           }
 
           const ts = nowIso();
-          db.run(
+          await db.run(
             `UPDATE accounts SET deleted_at = ?, updated_at = ?, version = version + 1
               WHERE budget_id = ? AND id = ? AND version = ?`,
             ts, ts, member.budgetId, id, version,
           );
-          emit({
+          await emit({
             budgetId: member.budgetId, entity: 'account', entityId: id,
             op: 'delete', actorId: member.userId, payload: { id, version: version + 1 },
           });

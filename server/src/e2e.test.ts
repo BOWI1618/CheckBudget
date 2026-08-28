@@ -19,8 +19,8 @@ let wsUrl: string;
 let app: Awaited<ReturnType<typeof buildApp>>;
 
 before(async () => {
-  db.migrate();
-  seedReference();
+  await db.migrate();
+  await seedReference();
   app = await buildApp();
   await app.listen({ port: 0, host: '127.0.0.1' });
   attachRealtime(app.server);
@@ -32,7 +32,7 @@ before(async () => {
 after(async () => {
   await closeRealtime();
   await app.close();
-  db.close();
+  await db.close();
 });
 
 interface Session { token: string; userId: string }
@@ -179,8 +179,10 @@ test('операция в валюте счёта конвертируется �
 
   // Курс изменился — историческая операция не меняется.
   db.run(
-    `INSERT OR REPLACE INTO exchange_rates (id, base_code, quote_code, rate_num, rate_den, valid_on, source, created_at)
-     VALUES (?,?,?,?,?,?,?,?)`,
+    `INSERT INTO exchange_rates (id, base_code, quote_code, rate_num, rate_den, valid_on, source, created_at)
+     VALUES (?,?,?,?,?,?,?,?)
+     ON CONFLICT (base_code, quote_code, valid_on, source) DO UPDATE
+       SET rate_num = excluded.rate_num, rate_den = excluded.rate_den`,
     randomUUID(), 'USD', 'RUB', 1500000, 10000, '2026-08-20', 'test', new Date().toISOString(),
   );
   const again = await api(`/budgets/${bid}/transactions`, { token: ivan.token });
@@ -501,7 +503,12 @@ test('удаление мягкое: операция исчезает из вы
   const list = await api(`/budgets/${bid}/transactions`, { token: ivan.token });
   assert.equal(list.body.items.length, 0);
 
-  const row = db.get<{ deleted_at: string | null }>('SELECT deleted_at FROM transactions WHERE id = ?', tx.body.id);
+  // Прямое чтение мимо API: под RLS такой запрос обязан объявить пользователя,
+  // иначе политика не отдаст ни строки и tombstone «исчезнет».
+  const row = await db.tx(
+    () => db.get<{ deleted_at: string | null }>('SELECT deleted_at FROM transactions WHERE id = ?', tx.body.id),
+    ivan.userId,
+  );
   assert.ok(row?.deleted_at, 'строка остаётся как tombstone');
 });
 

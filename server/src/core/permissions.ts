@@ -19,15 +19,27 @@ export interface Membership {
  * возвращается 404, а не 403: иначе перебором budgetId можно было бы узнать,
  * какие бюджеты существуют в системе.
  */
-export function requireMember(userId: string, budgetId: string, minRole: Role = 'viewer'): Membership {
-  const row = db.get<{ role: Role; base_currency: string; name: string }>(
-    `SELECT m.role, b.base_currency, b.name
-       FROM budget_members m
-       JOIN budgets b ON b.id = m.budget_id
-      WHERE m.budget_id = ? AND m.user_id = ? AND b.archived_at IS NULL`,
-    budgetId,
+export async function requireMember(
+  userId: string,
+  budgetId: string,
+  minRole: Role = 'viewer',
+): Promise<Membership> {
+  // Чтение идёт в транзакции с объявленным пользователем: в Postgres
+  // без app.user_id политики не пропустят ни одной строки, и проверка
+  // членства всегда возвращала бы «нет доступа».
+  const row = await db.tx(
+    () =>
+      db.get<{ role: Role; base_currency: string; name: string }>(
+        `SELECT m.role, b.base_currency, b.name
+           FROM budget_members m
+           JOIN budgets b ON b.id = m.budget_id
+          WHERE m.budget_id = ? AND m.user_id = ? AND b.archived_at IS NULL`,
+        budgetId,
+        userId,
+      ),
     userId,
   );
+
   if (!row) throw notFound('Бюджет не найден');
   if (RANK[row.role] < RANK[minRole]) {
     throw forbidden(

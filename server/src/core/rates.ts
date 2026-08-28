@@ -12,10 +12,10 @@ export interface ResolvedRate extends Rate {
  * Никогда не берётся «текущий» курс для прошлой операции — иначе изменение
  * справочника задним числом переписывало бы историю.
  */
-export function resolveRate(from: string, to: string, on: string): ResolvedRate | null {
+export async function resolveRate(from: string, to: string, on: string): Promise<ResolvedRate | null> {
   if (from === to) return { num: 1, den: 1, date: on, source: 'identity' };
 
-  const direct = db.get<{ rate_num: number; rate_den: number; valid_on: string; source: string }>(
+  const direct = await db.get<{ rate_num: number; rate_den: number; valid_on: string; source: string }>(
     `SELECT rate_num, rate_den, valid_on, source FROM exchange_rates
       WHERE base_code = ? AND quote_code = ? AND valid_on <= ?
       ORDER BY valid_on DESC LIMIT 1`,
@@ -29,7 +29,7 @@ export function resolveRate(from: string, to: string, on: string): ResolvedRate 
 
   // Обратная пара: RUB->USD выводится из USD->RUB переворотом дроби.
   // Точность не теряется, потому что курс — рациональное число.
-  const inverse = db.get<{ rate_num: number; rate_den: number; valid_on: string; source: string }>(
+  const inverse = await db.get<{ rate_num: number; rate_den: number; valid_on: string; source: string }>(
     `SELECT rate_num, rate_den, valid_on, source FROM exchange_rates
       WHERE base_code = ? AND quote_code = ? AND valid_on <= ?
       ORDER BY valid_on DESC LIMIT 1`,
@@ -65,12 +65,12 @@ export interface Conversion {
  * baseAmountMinor = null. Аналитика покажет такие операции отдельно,
  * вместо того чтобы молча их потерять или подставить произвольный курс.
  */
-export function convertToBase(
+export async function convertToBase(
   amountMinor: number,
   currency: string,
   baseCurrency: string,
   occurredOn: string,
-): Conversion {
+): Promise<Conversion> {
   if (currency === baseCurrency) {
     return {
       baseAmountMinor: amountMinor,
@@ -80,7 +80,7 @@ export function convertToBase(
       rateSource: 'identity',
     };
   }
-  const rate = resolveRate(currency, baseCurrency, occurredOn);
+  const rate = await resolveRate(currency, baseCurrency, occurredOn);
   if (!rate) {
     return { baseAmountMinor: null, rateNum: null, rateDen: null, rateDate: null, rateSource: null };
   }

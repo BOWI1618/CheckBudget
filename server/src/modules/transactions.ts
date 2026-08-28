@@ -17,10 +17,10 @@ import { toTransaction, type TransactionRow } from './mappers.js';
 
 const SELECT_TX = 'SELECT * FROM transactions';
 
-function findTx(budgetId: string, id: string): TransactionRow {
+async function findTx(budgetId: string, id: string): Promise<TransactionRow> {
   // Скоуп по budget_id обязателен: без него подмена id в URL дала бы
   // доступ к чужой операции. Метода поиска «просто по id» в коде нет.
-  const row = db.get<TransactionRow>(
+  const row = await db.get<TransactionRow>(
     `${SELECT_TX} WHERE budget_id = ? AND id = ? AND deleted_at IS NULL`,
     budgetId,
     id,
@@ -36,8 +36,8 @@ function findTx(budgetId: string, id: string): TransactionRow {
  * бюджета A смог бы записать операцию на счёт из бюджета B, просто передав
  * чужой account_id — членство в бюджете A у него ведь есть.
  */
-function requireAccount(budgetId: string, accountId: string) {
-  const acc = db.get<{ id: string; currency: string; name: string }>(
+async function requireAccount(budgetId: string, accountId: string) {
+  const acc = await db.get<{ id: string; currency: string; name: string }>(
     'SELECT id, currency, name FROM accounts WHERE budget_id = ? AND id = ? AND deleted_at IS NULL',
     budgetId,
     accountId,
@@ -46,8 +46,8 @@ function requireAccount(budgetId: string, accountId: string) {
   return acc;
 }
 
-function requireCategory(budgetId: string, categoryId: string, type: string) {
-  const cat = db.get<{ id: string; kind: string }>(
+async function requireCategory(budgetId: string, categoryId: string, type: string) {
+  const cat = await db.get<{ id: string; kind: string }>(
     'SELECT id, kind FROM categories WHERE budget_id = ? AND id = ? AND deleted_at IS NULL',
     budgetId,
     categoryId,
@@ -79,19 +79,19 @@ function checkCurrencyMatchesAccount(accountCurrency: string, currency: string, 
   }
 }
 
-export function createTransaction(
+export async function createTransaction(
   member: Membership,
   input: CreateTransactionInput,
   emit: Emit,
-): TransactionRow {
-  const account = requireAccount(member.budgetId, input.accountId);
+): Promise<TransactionRow> {
+  const account = await requireAccount(member.budgetId, input.accountId);
   checkCurrencyMatchesAccount(account.currency, input.currency, account.name);
 
   let counterAmountMinor: number | null = null;
   let counterCurrency: string | null = null;
 
   if (input.type === 'transfer') {
-    const counter = requireAccount(member.budgetId, input.counterAccountId!);
+    const counter = await requireAccount(member.budgetId, input.counterAccountId!);
     counterCurrency = counter.currency;
     // При переводе между счетами в разных валютах обе стороны задаются явно:
     // курс обмена определяет банк, а не наш справочник.
@@ -112,15 +112,15 @@ export function createTransaction(
       counterAmountMinor = input.counterAmountMinor;
     }
   } else {
-    requireCategory(member.budgetId, input.categoryId!, input.type);
+    await requireCategory(member.budgetId, input.categoryId!, input.type);
   }
 
   // Курс замораживается здесь и больше никогда не пересчитывается.
-  const conv = convertToBase(input.amountMinor, input.currency, member.baseCurrency, input.occurredOn);
+  const conv = await convertToBase(input.amountMinor, input.currency, member.baseCurrency, input.occurredOn);
 
   const id = newId();
   const ts = nowIso();
-  db.run(
+  await db.run(
     `INSERT INTO transactions (
        id, budget_id, type, account_id, counter_account_id, category_id,
        amount_minor, currency, base_amount_minor, base_currency,
@@ -138,8 +138,8 @@ export function createTransaction(
     input.occurredOn, input.note, member.userId, member.userId, ts, ts,
   );
 
-  const row = findTx(member.budgetId, id);
-  emit({
+  const row = await findTx(member.budgetId, id);
+  await emit({
     budgetId: member.budgetId,
     entity: 'transaction',
     entityId: id,
@@ -150,13 +150,13 @@ export function createTransaction(
   return row;
 }
 
-export function updateTransaction(
+export async function updateTransaction(
   member: Membership,
   id: string,
   input: UpdateTransactionInput,
   emit: Emit,
-): TransactionRow {
-  const current = findTx(member.budgetId, id);
+): Promise<TransactionRow> {
+  const current = await findTx(member.budgetId, id);
 
   // Оптимистичная блокировка. Клиент прислал версию, на которой основывал
   // своё изменение; если она устарела — возвращаем 409 с актуальным состоянием,
@@ -178,7 +178,7 @@ export function updateTransaction(
     note: input.note !== undefined ? input.note : current.note,
   };
 
-  const account = requireAccount(member.budgetId, next.accountId);
+  const account = await requireAccount(member.budgetId, next.accountId);
   checkCurrencyMatchesAccount(account.currency, next.currency, account.name);
 
   let counterCurrency: string | null = null;
@@ -189,7 +189,7 @@ export function updateTransaction(
     if (next.counterAccountId === next.accountId) {
       throw unprocessable('same_account', 'Счета перевода должны различаться');
     }
-    const counter = requireAccount(member.budgetId, next.counterAccountId);
+    const counter = await requireAccount(member.budgetId, next.counterAccountId);
     counterCurrency = counter.currency;
     if (counter.currency === account.currency) {
       next.counterAmountMinor = next.amountMinor;
@@ -198,7 +198,7 @@ export function updateTransaction(
     }
   } else {
     if (!next.categoryId) throw unprocessable('category_required', 'Выберите категорию');
-    requireCategory(member.budgetId, next.categoryId, current.type);
+    await requireCategory(member.budgetId, next.categoryId, current.type);
     next.counterAmountMinor = null;
     next.counterAccountId = null;
   }
@@ -210,7 +210,7 @@ export function updateTransaction(
     next.occurredOn !== current.occurred_on;
 
   const conv = needRecalc
-    ? convertToBase(next.amountMinor, next.currency, member.baseCurrency, next.occurredOn)
+    ? await convertToBase(next.amountMinor, next.currency, member.baseCurrency, next.occurredOn)
     : {
         baseAmountMinor: current.base_amount_minor,
         rateNum: current.rate_num,
@@ -220,7 +220,7 @@ export function updateTransaction(
       };
 
   const ts = nowIso();
-  const { changes } = db.run(
+  const { changes } = await db.run(
     `UPDATE transactions SET
        account_id = ?, counter_account_id = ?, category_id = ?,
        amount_minor = ?, currency = ?,
@@ -239,10 +239,10 @@ export function updateTransaction(
   // Условие version = ? в самом UPDATE — второй барьер против гонки:
   // даже если две транзакции прошли проверку выше одновременно,
   // применится ровно одна.
-  if (changes === 0) throw new VersionConflictError(toTransaction(findTx(member.budgetId, id)));
+  if (changes === 0) throw new VersionConflictError(toTransaction(await findTx(member.budgetId, id)));
 
-  const row = findTx(member.budgetId, id);
-  emit({
+  const row = await findTx(member.budgetId, id);
+  await emit({
     budgetId: member.budgetId,
     entity: 'transaction',
     entityId: id,
@@ -253,22 +253,22 @@ export function updateTransaction(
   return row;
 }
 
-export function deleteTransaction(member: Membership, id: string, version: number, emit: Emit): void {
-  const current = findTx(member.budgetId, id);
+export async function deleteTransaction(member: Membership, id: string, version: number, emit: Emit): Promise<void> {
+  const current = await findTx(member.budgetId, id);
   if (current.version !== version) throw new VersionConflictError(toTransaction(current));
 
   // Мягкое удаление: строка остаётся как tombstone. Это делает разрешимым
   // конфликт «удалено на телефоне / изменено на ПК» — иначе второе устройство
   // получило бы «объект не найден» без возможности что-либо предложить.
   const ts = nowIso();
-  const { changes } = db.run(
+  const { changes } = await db.run(
     `UPDATE transactions SET deleted_at = ?, updated_by = ?, updated_at = ?, version = version + 1
       WHERE budget_id = ? AND id = ? AND version = ? AND deleted_at IS NULL`,
     ts, member.userId, ts, member.budgetId, id, version,
   );
-  if (changes === 0) throw new VersionConflictError(toTransaction(findTx(member.budgetId, id)));
+  if (changes === 0) throw new VersionConflictError(toTransaction(await findTx(member.budgetId, id)));
 
-  emit({
+  await emit({
     budgetId: member.budgetId,
     entity: 'transaction',
     entityId: id,
@@ -284,7 +284,7 @@ export const transactionRoutes = async (app: FastifyInstance): Promise<void> => 
   app.get<{ Params: { budgetId: string }; Querystring: Record<string, string> }>(
     '/budgets/:budgetId/transactions',
     async (req) => {
-      const member = requireMember(req.userId, req.params.budgetId);
+      const member = await requireMember(req.userId, req.params.budgetId);
       const q = req.query;
       const where: string[] = ['budget_id = ?', 'deleted_at IS NULL'];
       const params: unknown[] = [member.budgetId];
@@ -297,7 +297,9 @@ export const transactionRoutes = async (app: FastifyInstance): Promise<void> => 
         params.push(q.accountId, q.accountId);
       }
       if (q.type) { where.push('type = ?'); params.push(q.type); }
-      if (q.q) { where.push('note LIKE ?'); params.push(`%${q.q}%`); }
+      // LOWER с обеих сторон: в SQLite LIKE нечувствителен к регистру для ASCII,
+      // в Postgres — чувствителен. Без приведения поиск вёл бы себя по-разному.
+      if (q.q) { where.push('LOWER(note) LIKE LOWER(?)'); params.push(`%${q.q}%`); }
 
       // Курсорная пагинация по (occurred_on, id): стабильна при вставках,
       // в отличие от OFFSET, и не деградирует на больших смещениях.
@@ -308,7 +310,7 @@ export const transactionRoutes = async (app: FastifyInstance): Promise<void> => 
       }
 
       const limit = Math.min(Number(q.limit ?? 100) || 100, 500);
-      const rows = db.all<TransactionRow>(
+      const rows = await db.all<TransactionRow>(
         `${SELECT_TX} WHERE ${where.join(' AND ')} ORDER BY occurred_on DESC, id DESC LIMIT ?`,
         ...params,
         limit + 1,
@@ -326,12 +328,12 @@ export const transactionRoutes = async (app: FastifyInstance): Promise<void> => 
   app.post<{ Params: { budgetId: string } }>(
     '/budgets/:budgetId/transactions',
     async (req, reply) => {
-      const member = requireMember(req.userId, req.params.budgetId, 'editor');
+      const member = await requireMember(req.userId, req.params.budgetId, 'editor');
       const input = parseBody(createTransactionSchema, req.body);
       return idempotent(
         req,
         reply,
-        () => mutate((emit) => toTransaction(createTransaction(member, input, emit))),
+        () => mutate(member.userId, async (emit) => toTransaction(await createTransaction(member, input, emit))),
         201,
       );
     },
@@ -340,11 +342,11 @@ export const transactionRoutes = async (app: FastifyInstance): Promise<void> => 
   app.patch<{ Params: { budgetId: string; id: string } }>(
     '/budgets/:budgetId/transactions/:id',
     async (req, reply) => {
-      const member = requireMember(req.userId, req.params.budgetId, 'editor');
+      const member = await requireMember(req.userId, req.params.budgetId, 'editor');
       const input = parseBody(updateTransactionSchema, req.body);
       const { id } = req.params;
       return idempotent(req, reply, () =>
-        mutate((emit) => toTransaction(updateTransaction(member, id, input, emit))),
+        mutate(member.userId, async (emit) => toTransaction(await updateTransaction(member, id, input, emit))),
       );
     },
   );
@@ -352,11 +354,11 @@ export const transactionRoutes = async (app: FastifyInstance): Promise<void> => 
   app.delete<{ Params: { budgetId: string; id: string } }>(
     '/budgets/:budgetId/transactions/:id',
     async (req, reply) => {
-      const member = requireMember(req.userId, req.params.budgetId, 'editor');
+      const member = await requireMember(req.userId, req.params.budgetId, 'editor');
       const { version } = parseBody(deleteSchema, req.body);
       const { id } = req.params;
-      return idempotent(req, reply, () => {
-        mutate((emit) => deleteTransaction(member, id, version, emit));
+      return idempotent(req, reply, async () => {
+        await mutate(member.userId, (emit) => deleteTransaction(member, id, version, emit));
         return { ok: true };
       });
     },

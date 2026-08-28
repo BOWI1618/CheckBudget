@@ -63,7 +63,7 @@ export async function buildApp() {
   app.addHook('onRequest', (req, _reply, done) => {
     const header = req.headers['x-client-id'];
     const clientId = typeof header === 'string' && header.length <= 64 ? header : null;
-    requestContext.run({ clientId }, done);
+    requestContext.run({ clientId, userId: null }, done);
   });
 
   app.setErrorHandler((err, req, reply) => {
@@ -102,24 +102,22 @@ export async function buildApp() {
 }
 
 async function main() {
-  db.migrate();
-  seedReference();
+  await db.migrate();
+  await seedReference();
 
   const app = await buildApp();
   await app.listen({ port: config.port, host: config.host });
   attachRealtime(app.server);
 
-  const cleanup = setInterval(purgeExpiredIdempotencyKeys, 3600_000);
+  const cleanup = setInterval(() => void purgeExpiredIdempotencyKeys(), 3600_000);
   cleanup.unref();
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
       closeRealtime()
         .then(() => app.close())
-        .then(() => {
-          db.close();
-          process.exit(0);
-        });
+        .then(() => db.close())
+        .then(() => process.exit(0));
     });
   }
 

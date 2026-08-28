@@ -17,12 +17,14 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
   email         TEXT NOT NULL,
-  email_lower   TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,           -- scrypt: N$r$p$salt$hash
   display_name  TEXT NOT NULL,
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL
 );
+-- Уникальность без учёта регистра. В Postgres ту же роль играет тип CITEXT;
+-- запрос `WHERE LOWER(email) = ?` работает одинаково на обоих движках.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
 
 CREATE TABLE IF NOT EXISTS user_settings (
   user_id          TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

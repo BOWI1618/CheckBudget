@@ -36,15 +36,15 @@ const INCOME_SEEDS: CategorySeed[] = [
   { name: 'Прочие поступления', icon: 'dots', color: '#64748b' },
 ];
 
-export function seedBudgetDefaults(budgetId: string, baseCurrency: string): void {
+export async function seedBudgetDefaults(budgetId: string, baseCurrency: string): Promise<void> {
   const ts = nowIso();
   let order = 0;
 
-  const insert = (
+  const insert = async (
     id: string, parentId: string | null, name: string, kind: 'expense' | 'income',
     icon: string, color: string,
   ) => {
-    db.run(
+    await db.run(
       `INSERT INTO categories (id, budget_id, parent_id, name, kind, icon, color,
                                sort_order, created_at, updated_at, version)
        VALUES (?,?,?,?,?,?,?,?,?,?,1)`,
@@ -55,22 +55,22 @@ export function seedBudgetDefaults(budgetId: string, baseCurrency: string): void
   for (const [kind, seeds] of [['expense', EXPENSE_SEEDS], ['income', INCOME_SEEDS]] as const) {
     for (const seed of seeds) {
       const parentId = newId();
-      insert(parentId, null, seed.name, kind, seed.icon, seed.color);
+      await insert(parentId, null, seed.name, kind, seed.icon, seed.color);
       for (const child of seed.children ?? []) {
-        insert(newId(), parentId, child, kind, seed.icon, seed.color);
+        await insert(newId(), parentId, child, kind, seed.icon, seed.color);
       }
     }
   }
 
   // Два счёта по умолчанию покрывают подавляющее большинство сценариев
   // и снимают барьер «сначала настрой, потом пользуйся».
-  db.run(
+  await db.run(
     `INSERT INTO accounts (id, budget_id, name, type, currency, initial_balance_minor,
                            color, icon, sort_order, created_at, updated_at, version)
      VALUES (?,?,?,?,?,0,?,?,0,?,?,1)`,
     newId(), budgetId, 'Карта', 'card', baseCurrency, '#6366f1', 'card', ts, ts,
   );
-  db.run(
+  await db.run(
     `INSERT INTO accounts (id, budget_id, name, type, currency, initial_balance_minor,
                            color, icon, sort_order, created_at, updated_at, version)
      VALUES (?,?,?,?,?,0,?,?,1,?,?,1)`,

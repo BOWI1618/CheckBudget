@@ -21,11 +21,11 @@ const SEED_RATES: Array<[string, string, string]> = [
   ['JPY', 'RUB', '0.6150'],
 ];
 
-export function seedReference(): void {
-  db.tx(() => {
+export async function seedReference(): Promise<void> {
+  await db.tx(async () => {
     for (const c of CURRENCIES) {
-      db.run(
-        `INSERT INTO currencies (code, name_ru, symbol, exponent, is_active) VALUES (?,?,?,?,1)
+      await db.run(
+        `INSERT INTO currencies (code, name_ru, symbol, exponent, is_active) VALUES (?,?,?,?,TRUE)
          ON CONFLICT(code) DO UPDATE SET name_ru = excluded.name_ru,
                                          symbol = excluded.symbol,
                                          exponent = excluded.exponent`,
@@ -36,18 +36,25 @@ export function seedReference(): void {
     const validOn = '2020-01-01'; // стартовый курс действует «с начала времён»
     for (const [base, quote, value] of SEED_RATES) {
       const rate = parseRate(value);
-      db.run(
-        `INSERT OR IGNORE INTO exchange_rates
+      await db.run(
+        `INSERT INTO exchange_rates
            (id, base_code, quote_code, rate_num, rate_den, valid_on, source, created_at)
-         VALUES (?,?,?,?,?,?,?,?)`,
+         VALUES (?,?,?,?,?,?,?,?)
+         ON CONFLICT DO NOTHING`,
         newId(), base, quote, rate.num, rate.den, validOn, 'seed', nowIso(),
       );
     }
   });
 }
 
+// Не top-level await: он превращает модуль в асинхронный, и тогда его
+// нельзя импортировать по пути, идущему через require — а именно так
+// его подхватывает сборка тестов.
 if (process.argv[1]?.endsWith('seed.ts') || process.argv[1]?.endsWith('seed.js')) {
-  db.migrate();
-  seedReference();
-  console.log(`Справочники загружены (${CURRENCIES.length} валют, ${SEED_RATES.length} курсов), дата ${today()}`);
+  void (async () => {
+    await db.migrate();
+    await seedReference();
+    console.log(`Справочники загружены (${CURRENCIES.length} валют, ${SEED_RATES.length} курсов), дата ${today()}`);
+    await db.close();
+  })();
 }

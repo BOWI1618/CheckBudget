@@ -12,7 +12,7 @@ export interface EmitInput {
   payload: unknown;
 }
 
-export type Emit = (input: EmitInput) => void;
+export type Emit = (input: EmitInput) => Promise<void>;
 
 type Broadcaster = (events: SyncEvent[]) => void;
 let broadcaster: Broadcaster = () => {};
@@ -21,15 +21,20 @@ export const setBroadcaster = (fn: Broadcaster): void => {
 };
 
 const actorNameCache = new Map<string, string>();
-function actorName(userId: string): string {
+
+async function actorName(userId: string): Promise<string> {
   let name = actorNameCache.get(userId);
   if (name === undefined) {
-    name = db.get<{ display_name: string }>('SELECT display_name FROM users WHERE id = ?', userId)
-      ?.display_name ?? 'Участник';
+    const row = await db.get<{ display_name: string }>(
+      'SELECT display_name FROM users WHERE id = ?',
+      userId,
+    );
+    name = row?.display_name ?? 'Участник';
     actorNameCache.set(userId, name);
   }
   return name;
 }
+
 export const invalidateActorName = (userId: string): void => {
   actorNameCache.delete(userId);
 };
@@ -42,18 +47,26 @@ export const invalidateActorName = (userId: string): void => {
  *   — событие не может «потеряться», если broadcast не дошёл: клиент догрузит
  *     его по seq при переподключении;
  *   — событие не может «прийти раньше», чем изменение стало видимым в БД.
+ *
+ * `actorId` передаётся отдельным параметром, а не берётся из emit: транзакция
+ * должна объявить пользователя ДО первого запроса, иначе RLS в Postgres
+ * не пропустит даже чтение.
  */
-export function mutate<T>(fn: (emit: Emit) => T): T {
+export async function mutate<T>(actorId: string, fn: (emit: Emit) => Promise<T>): Promise<T> {
   const collected: SyncEvent[] = [];
 
-  const result = db.tx(() => {
+  const result = await db.tx(async () => {
     collected.length = 0;
-    return fn((input) => {
+    return fn(async (input) => {
       const createdAt = nowIso();
       const clientId = currentClientId();
-      const { lastInsertRowid } = db.run(
+
+      // RETURNING, а не lastInsertRowid: последнее есть только у SQLite,
+      // а seq нужен обоим драйверам одинаково.
+      const inserted = await db.get<{ seq: number }>(
         `INSERT INTO events (budget_id, entity, entity_id, op, actor_id, actor_client_id, payload, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         RETURNING seq`,
         input.budgetId,
         input.entity,
         input.entityId,
@@ -63,27 +76,32 @@ export function mutate<T>(fn: (emit: Emit) => T): T {
         JSON.stringify(input.payload ?? null),
         createdAt,
       );
+
       collected.push({
-        seq: lastInsertRowid,
+        seq: Number(inserted!.seq),
         budgetId: input.budgetId,
         entity: input.entity,
         entityId: input.entityId,
         op: input.op,
         actorId: input.actorId,
         actorClientId: clientId,
-        actorName: actorName(input.actorId),
+        actorName: await actorName(input.actorId),
         payload: input.payload,
         createdAt,
       });
     });
-  });
+  }, actorId);
 
   if (collected.length > 0) broadcaster(collected);
   return result;
 }
 
-export function readEventsSince(budgetId: string, sinceSeq: number, limit: number): SyncEvent[] {
-  const rows = db.all<{
+export async function readEventsSince(
+  budgetId: string,
+  sinceSeq: number,
+  limit: number,
+): Promise<SyncEvent[]> {
+  const rows = await db.all<{
     seq: number; budget_id: string; entity: string; entity_id: string;
     op: string; actor_id: string; actor_client_id: string | null;
     payload: string; created_at: string;
@@ -93,33 +111,34 @@ export function readEventsSince(budgetId: string, sinceSeq: number, limit: numbe
     sinceSeq,
     limit,
   );
-  return rows.map((r) => ({
-    seq: r.seq,
+
+  return Promise.all(rows.map(async (r) => ({
+    seq: Number(r.seq),
     budgetId: r.budget_id,
     entity: r.entity as EntityType,
     entityId: r.entity_id,
     op: r.op as EventOp,
     actorId: r.actor_id,
     actorClientId: r.actor_client_id,
-    actorName: actorName(r.actor_id),
+    actorName: await actorName(r.actor_id),
     payload: JSON.parse(r.payload),
     createdAt: r.created_at,
-  }));
+  })));
 }
 
-export function currentSeq(budgetId: string): number {
-  return (
-    db.get<{ seq: number | null }>('SELECT MAX(seq) AS seq FROM events WHERE budget_id = ?', budgetId)
-      ?.seq ?? 0
+export async function currentSeq(budgetId: string): Promise<number> {
+  const row = await db.get<{ seq: number | null }>(
+    'SELECT MAX(seq) AS seq FROM events WHERE budget_id = ?',
+    budgetId,
   );
+  return Number(row?.seq ?? 0);
 }
 
-export function countEventsSince(budgetId: string, sinceSeq: number): number {
-  return (
-    db.get<{ n: number }>(
-      'SELECT COUNT(*) AS n FROM events WHERE budget_id = ? AND seq > ?',
-      budgetId,
-      sinceSeq,
-    )?.n ?? 0
+export async function countEventsSince(budgetId: string, sinceSeq: number): Promise<number> {
+  const row = await db.get<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM events WHERE budget_id = ? AND seq > ?',
+    budgetId,
+    sinceSeq,
   );
+  return Number(row?.n ?? 0);
 }

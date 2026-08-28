@@ -18,14 +18,14 @@ const hashRequest = (method: string, url: string, body: unknown): string =>
  * при обрыве связи: пользователь в метро нажал «Сохранить», ответ не дошёл,
  * клиент повторил — дубля операции не будет.
  */
-export function lookupIdempotent(
+export async function lookupIdempotent(
   key: string,
   userId: string,
   method: string,
   url: string,
   body: unknown,
-): StoredResponse | null {
-  const row = db.get<{ request_hash: string; status_code: number; response: string }>(
+): Promise<StoredResponse | null> {
+  const row = await db.get<{ request_hash: string; status_code: number; response: string }>(
     'SELECT request_hash, status_code, response FROM idempotency_keys WHERE key = ? AND user_id = ?',
     key,
     userId,
@@ -40,7 +40,7 @@ export function lookupIdempotent(
   return { statusCode: row.status_code, body: JSON.parse(row.response) };
 }
 
-export function saveIdempotent(
+export async function saveIdempotent(
   key: string,
   userId: string,
   method: string,
@@ -48,11 +48,18 @@ export function saveIdempotent(
   body: unknown,
   statusCode: number,
   response: unknown,
-): void {
-  db.run(
-    `INSERT OR REPLACE INTO idempotency_keys
+): Promise<void> {
+  // ON CONFLICT вместо INSERT OR REPLACE: первое понимают оба движка,
+  // второе — только SQLite.
+  await db.run(
+    `INSERT INTO idempotency_keys
        (key, user_id, request_hash, status_code, response, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT (key, user_id) DO UPDATE SET
+       request_hash = excluded.request_hash,
+       status_code  = excluded.status_code,
+       response     = excluded.response,
+       created_at   = excluded.created_at`,
     key,
     userId,
     hashRequest(method, url, body),
@@ -62,7 +69,7 @@ export function saveIdempotent(
   );
 }
 
-export function purgeExpiredIdempotencyKeys(): void {
+export async function purgeExpiredIdempotencyKeys(): Promise<void> {
   const cutoff = new Date(Date.now() - config.idempotencyRetentionHours * 3600_000).toISOString();
-  db.run('DELETE FROM idempotency_keys WHERE created_at < ?', cutoff);
+  await db.run('DELETE FROM idempotency_keys WHERE created_at < ?', cutoff);
 }
