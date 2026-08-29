@@ -802,6 +802,19 @@
 }
 .kpi__value { font-family: var(--num); font-size: var(--t-display); font-weight: 500; letter-spacing: -0.04em; }
 .kpi__sub { font-size: var(--t-small); color: var(--ink-3); }
+/* Что сдвинулось против прошлого месяца. Три колонки: статья, деньги,
+   процент. Порядок колонок совпадает с порядком сортировки — по деньгам,
+   а не по проценту. */
+.movers { list-style: none; margin: var(--s2) 0 0; padding: 0; display: flex; flex-direction: column; }
+.movers__row {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: 8px 0; font-size: var(--t-small);
+}
+.movers__row + .movers__row { border-top: 1px solid var(--line); }
+.movers__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.movers__sum { font-size: var(--t-base); font-weight: 500; white-space: nowrap; }
+.movers__pct { display: block; color: var(--ink-3); font-size: var(--t-micro); }
+
 /* Ведущий показатель — терракотовая плитка: это то число, ради которого
    открывают экран. */
 .kpi--lead { background: var(--accent); color: var(--on-accent); }

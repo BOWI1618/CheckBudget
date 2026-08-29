@@ -70,18 +70,20 @@ export function AnalyticsScreen({ period }: { period: string }) {
       });
     }
 
-    const slices: Array<Slice & { delta: number | null }> = [...byRoot.entries()]
-      .map(([id, value]) => {
-        const category = categoryById.get(id);
-        const was = byRootPrior.get(id);
-        return {
-          id, value,
-          label: category?.name ?? 'Прочее',
-          color: category?.color ?? 'var(--cat-stone)',
-          delta: priorLoaded && was ? Math.round(((value - was) / was) * 100) : null,
-        };
-      })
-      .sort((a, b) => b.value - a.value);
+    const slices: Array<Slice & { delta: number | null; was: number | null; moved: number }> =
+      [...byRoot.entries()]
+        .map(([id, value]) => {
+          const category = categoryById.get(id);
+          const was = priorLoaded ? byRootPrior.get(id) ?? 0 : null;
+          return {
+            id, value, was,
+            label: category?.name ?? 'Прочее',
+            color: category?.color ?? 'var(--cat-stone)',
+            delta: was ? Math.round(((value - was) / was) * 100) : null,
+            moved: was === null ? 0 : value - was,
+          };
+        })
+        .sort((a, b) => b.value - a.value);
 
     // Накопительная кривая за месяц отвечает на вопрос «укладываюсь ли я
     // в темп», на который столбчатый график не отвечает.
@@ -103,16 +105,42 @@ export function AnalyticsScreen({ period }: { period: string }) {
       expense: totals.get(m)?.expenseMinor ?? 0,
     }));
 
-    // «Что изменилось сильнее всего» — две статьи с наибольшим сдвигом.
-    // Именно это ищут глазами в таблице сравнения, и это можно назвать
-    // словами вместо того, чтобы заставлять искать.
-    const movers = slices
-      .filter((s) => s.delta !== null && Math.abs(s.delta) >= 5)
-      .sort((a, b) => Math.abs(b.delta!) - Math.abs(a.delta!))
-      .slice(0, 2);
+    // «Что изменилось» ранжируется ДЕНЬГАМИ, а не процентами.
+    //
+    // Проценты обманывают: +38% на статье в 500 ₽ — это 190 ₽ и ничего
+    // не значит, а +5% на аренде — это 3 000 ₽ и меняет весь месяц.
+    // Сортировка по проценту выносила наверх мелочь, и карточка выглядела
+    // аналитикой, ничего при этом не сообщая.
+    //
+    // Порог тоже денежный: сдвиг меньше 2% месячного итога — шум.
+    const noise = Math.max(1, Math.round(current * 0.02));
+    const movers = priorLoaded
+      // Объединение, а не только текущие статьи: если на чём-то перестали
+      // тратить совсем, этой статьи в этом месяце нет — а это ровно то
+      // изменение, ради которого карточку и читают.
+      ? [...new Set([...byRoot.keys(), ...byRootPrior.keys()])]
+        .map((id) => {
+          const category = categoryById.get(id);
+          const value = byRoot.get(id) ?? 0;
+          const was = byRootPrior.get(id) ?? 0;
+          return {
+            id, value, was, moved: value - was,
+            label: category?.name ?? 'Прочее',
+            percent: was > 0 ? Math.round(((value - was) / was) * 100) : null,
+          };
+        })
+        .filter((m) => Math.abs(m.moved) >= noise)
+        .sort((a, b) => Math.abs(b.moved) - Math.abs(a.moved))
+        .slice(0, 3)
+      : [];
+
+    // Сумма всех сдвигов и есть разница месяцев — этим карточка
+    // и объясняет, ОТКУДА взялись проценты в соседнем показателе.
+    const movedTotal = current - prior;
 
     return {
-      current, prior, count, slices, months, days, cumulative, movers, priorLoaded, previous,
+      current, prior, count, slices, months, days, cumulative, movers, movedTotal,
+      priorLoaded, previous,
       largest: largest.sort((a, b) => b.amount - a.amount).slice(0, 5),
     };
   }, [data, period, kind, categoryById, accountById]);
@@ -168,25 +196,49 @@ export function AnalyticsScreen({ period }: { period: string }) {
         </Card>
 
         <Card className="kpi">
-          <span className="kpi__label">Что изменилось сильнее всего</span>
+          <span className="kpi__label">Что изменилось против {periodGen(analysis.previous)}</span>
+
           {analysis.movers.length === 0 ? (
             <span className="kpi__sub" style={{ marginTop: 6 }}>
-              {analysis.priorLoaded ? 'Все статьи держатся прошлого месяца.'
+              {analysis.priorLoaded
+                ? 'Ни одна статья не сдвинулась заметно — месяцы похожи.'
                 : 'Прошлый месяц ещё не загружен — пролистайте период назад стрелкой в шапке.'}
             </span>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-              {analysis.movers.map((m) => (
-                <span key={m.id} className="row" style={{ gap: 8, fontSize: 'var(--t-small)' }}>
-                  <span style={{ flex: 1 }}>{m.label}</span>
-                  <strong className={`money ${
-                    (m.delta! > 0) === (kind === 'income') ? 'tone-income' : 'tone-expense'
-                  }`}>
-                    {m.delta! > 0 ? '+' : '−'}{Math.abs(m.delta!)}%
-                  </strong>
-                </span>
-              ))}
-            </div>
+            <>
+              {/* Сумма всех сдвигов и есть разница месяцев: карточка
+                  объясняет, откуда взялся процент в соседнем показателе. */}
+              <span className="kpi__sub">
+                {kind === 'expense' ? 'Расход' : 'Доход'}
+                {analysis.movedTotal >= 0 ? ' вырос на ' : ' упал на '}
+                {formatMoney(Math.abs(analysis.movedTotal), base)}. Больше всего сдвинулись:
+              </span>
+
+              <ul className="movers">
+                {analysis.movers.map((m) => {
+                  const good = (m.moved > 0) === (kind === 'income');
+                  return (
+                    <li className="movers__row" key={m.id}>
+                      <span className="movers__name">
+                        {m.label}
+                        {/* Процент — подпись под названием, а не третья колонка:
+                            в колонку он не помещался и обрезал названия статей. */}
+                        <span className="movers__pct">
+                          {m.value === 0 ? 'больше не тратим'
+                            : m.percent === null ? 'новая статья'
+                              : `${m.percent > 0 ? '+' : '−'}${Math.abs(m.percent)}%`}
+                        </span>
+                      </span>
+                      {/* Деньги крупно: сортировка идёт по ним, и глаз должен
+                          читать в том же порядке. */}
+                      <strong className={`money movers__sum ${good ? 'tone-income' : 'tone-expense'}`}>
+                        {m.moved > 0 ? '+' : '−'}{formatMoney(Math.abs(m.moved), base)}
+                      </strong>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </Card>
       </div>
