@@ -162,3 +162,25 @@ export function toInputValue(minor: number, currency: string): string {
   const frac = String(abs % 10 ** exp).padStart(exp, '0');
   return `${whole},${frac}`;
 }
+
+/**
+ * Согласование существительного с числом.
+ *
+ * «48 операц.» — обрубок, который экономит четыре знака ценой того, что
+ * интерфейс перестаёт говорить по-русски. Правило простое и стоит
+ * десяти строк: 1 операция, 2 операции, 5 операций.
+ *
+ *   plural(5, ['операция', 'операции', 'операций'])  →  'операций'
+ */
+export function plural(n: number, forms: [string, string, string]): string {
+  const abs = Math.abs(n) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) return forms[2];
+  if (last > 1 && last < 5) return forms[1];
+  if (last === 1) return forms[0];
+  return forms[2];
+}
+
+/** «48 операций» — число вместе с согласованным словом. */
+export const countOf = (n: number, forms: [string, string, string]): string =>
+  `${n} ${plural(n, forms)}`;

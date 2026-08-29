@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { formatMoney } from '@checkbudget/shared';
+import { countOf, formatMoney } from '@checkbudget/shared';
 import type { Transaction } from '@checkbudget/shared';
 import { useApp, useLookups } from '../data/hooks.js';
 import { Card, CardTitle, EmptyState, Button, ProgressBar, Skeleton } from '../components/ui.js';
@@ -144,7 +144,7 @@ export function Dashboard({
         {stats.unconverted > 0 && (
           <div className="banner banner--offline" style={{ marginTop: 14 }}>
             <Icon name="warning" size={16} />
-            {stats.unconverted} операц. без курса — не учтены в итогах
+            {countOf(stats.unconverted, ['операция', 'операции', 'операций'])} без курса — не учтены в итогах
           </div>
         )}
       </Card>
@@ -223,7 +223,7 @@ export function Dashboard({
                   <span className="limit__name">{goal.name}</span>
                   <span className="tnum tone-muted" style={{ fontSize: 'var(--t-small)' }}>{Math.round(pct)}%</span>
                 </div>
-                <ProgressBar value={pct} tone="ok" />
+                <ProgressBar value={pct} tone="goal" />
                 <div className="limit__nums">
                   <span className="money">{formatMoney(goal.savedMinor, goal.currency)}</span>
                   <span className="money">из {formatMoney(goal.targetMinor, goal.currency)}</span>

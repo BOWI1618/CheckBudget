@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CURRENCIES } from '@checkbudget/shared';
+import { CURRENCIES, countOf } from '@checkbudget/shared';
 import { store } from '../data/store.js';
 import { useApp } from '../data/hooks.js';
 import { Card, CardTitle, Button, Field, Sheet, Segmented } from '../components/ui.js';
@@ -101,7 +101,7 @@ export function SettingsScreen() {
             </div>
             <div className="list-row__sub">
               {app.queueSize > 0
-                ? `${app.queueSize} изменен. ждут отправки`
+                ? `${countOf(app.queueSize, ['изменение', 'изменения', 'изменений'])} ждут отправки`
                 : 'Все изменения отправлены'}
             </div>
           </div>

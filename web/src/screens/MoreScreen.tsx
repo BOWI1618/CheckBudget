@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { countOf } from '@checkbudget/shared';
 import { Card, CardTitle } from '../components/ui.js';
 import { Icon } from '../components/Icon.js';
 import { useApp } from '../data/hooks.js';
@@ -21,7 +22,7 @@ export function MoreScreen() {
           <div className="list-row__body">
             <div className="list-row__title">{app.data?.budget.name}</div>
             <div className="list-row__sub">
-              {app.data?.budget.baseCurrency} · {app.data?.members.length ?? 1} участн.
+              {app.data?.budget.baseCurrency} · {countOf(app.data?.members.length ?? 1, ['участник', 'участника', 'участников'])}
             </div>
           </div>
         </div>

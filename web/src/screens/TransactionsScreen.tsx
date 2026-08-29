@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Transaction } from '@checkbudget/shared';
-import { formatMoney } from '@checkbudget/shared';
+import { countOf, formatMoney } from '@checkbudget/shared';
 import { useApp, useCanEdit, useLookups } from '../data/hooks.js';
 import { store } from '../data/store.js';
 import { Card, CardTitle, EmptyState, Button, Sheet, Segmented } from '../components/ui.js';
@@ -68,7 +68,7 @@ export function TransactionsScreen({
         <CardTitle action={<span className="money" style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
           {formatMoney(total, base, { sign: total > 0 })}
         </span>}>
-          {items.length} операц.
+          {countOf(items.length, ['операция', 'операции', 'операций'])}
         </CardTitle>
         <TransactionList
           items={items}

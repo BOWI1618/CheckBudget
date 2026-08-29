@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { createCategorySchema, updateCategorySchema, deleteSchema } from '@checkbudget/shared';
+import { countOf, createCategorySchema, updateCategorySchema, deleteSchema } from '@checkbudget/shared';
 import { db } from '../db/index.js';
 import { mutate } from '../core/events.js';
 import { requireMember } from '../core/permissions.js';
@@ -145,7 +145,7 @@ export const categoryRoutes = async (app: FastifyInstance): Promise<void> => {
             member.budgetId, id,
           ))?.n ?? 0;
           if (used > 0) {
-            throw unprocessable('category_in_use', `В категории ${used} операц. — сначала перенесите их`);
+            throw unprocessable('category_in_use', `В категории ${countOf(used, ['операция', 'операции', 'операций'])} — сначала перенесите их`);
           }
           const children = (await db.get<{ n: number }>(
             'SELECT COUNT(*) AS n FROM categories WHERE parent_id = ? AND deleted_at IS NULL',

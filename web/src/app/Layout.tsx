@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { store } from '../data/store.js';
 import { useApp, useCanEdit } from '../data/hooks.js';
+import { countOf } from '@checkbudget/shared';
 import { Icon } from '../components/Icon.js';
 import { Button } from '../components/ui.js';
 import { formatPeriod, shiftPeriod, currentPeriod } from '../lib/dates.js';
@@ -112,7 +113,8 @@ export function Layout({
           {app.connection === 'offline' && (
             <div className="banner banner--offline" style={{ marginBottom: 12 }}>
               <Icon name="wifiOff" size={16} />
-              Нет соединения.{app.queueSize > 0 && ` ${app.queueSize} изменен. будут отправлены при подключении.`}
+              Нет соединения.{app.queueSize > 0
+                && ` ${countOf(app.queueSize, ['изменение', 'изменения', 'изменений'])} отправим при подключении.`}
             </div>
           )}
           {children}

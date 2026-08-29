@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { createAccountSchema, updateAccountSchema, deleteSchema } from '@checkbudget/shared';
+import { countOf, createAccountSchema, updateAccountSchema, deleteSchema } from '@checkbudget/shared';
 import { db } from '../db/index.js';
 import { mutate } from '../core/events.js';
 import { requireMember } from '../core/permissions.js';
@@ -151,7 +151,7 @@ export const accountRoutes = async (app: FastifyInstance): Promise<void> => {
           if (used > 0) {
             throw unprocessable(
               'account_in_use',
-              `На счёте ${used} операц. — его можно архивировать, но не удалить`,
+              `На счёте ${countOf(used, ['операция', 'операции', 'операций'])} — счёт можно архивировать, но не удалить`,
             );
           }
 

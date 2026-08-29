@@ -51,6 +51,22 @@ export interface Slice {
   color: string;
 }
 
+/**
+ * Ранговая шкала для кольца расходов.
+ *
+ * Цвета категорий выбирает пользователь, и радуга из фиолетового
+ * с оранжевым разрушала бы систему на самом заметном месте экрана.
+ * Здесь цвет несёт информацию, а не метку: шкала по убыванию доли
+ * кодирует то, ради чего на этот график и смотрят — порядок величин.
+ * Связь «сектор ↔ строка легенды» сохраняется, потому что легенда
+ * раскрашена той же шкалой; опознание категории даёт название рядом.
+ */
+const RANK = ['var(--rank-1)', 'var(--rank-2)', 'var(--rank-3)',
+              'var(--rank-4)', 'var(--rank-5)', 'var(--rank-6)'];
+
+export const rankColor = (index: number): string =>
+  RANK[Math.min(index, RANK.length - 1)]!;
+
 export function Donut({
   slices, currency, total, size = 180, thickness = 22,
 }: { slices: Slice[]; currency: string; total: number; size?: number; thickness?: number }) {
@@ -86,7 +102,7 @@ export function Donut({
               key={arc.id}
               cx={size / 2} cy={size / 2} r={radius}
               fill="none"
-              stroke={arc.color}
+              stroke={rankColor(index)}
               strokeWidth={active === arc.id ? thickness + 4 : thickness}
               strokeDasharray={`${arc.dash * entrance} ${circumference - arc.dash * entrance}`}
               strokeDashoffset={arc.offset}
@@ -113,17 +129,18 @@ export function Donut({
   );
 }
 
-export function Legend({ slices, currency, total }: { slices: Slice[]; currency: string; total: number }) {
+export function Legend({ slices, currency }: { slices: Slice[]; currency: string; total?: number }) {
   return (
     <ul className="legend">
-      {slices.map((slice) => (
+      {slices.map((slice, index) => (
         <li key={slice.id} className="legend__row">
-          <span className="legend__swatch" style={{ background: slice.color }} />
+          <span className="legend__swatch" style={{ background: rankColor(index) }} />
           <span className="legend__label">{slice.label}</span>
-          <span className="legend__pct tnum">
-            {total > 0 ? Math.round((slice.value / total) * 100) : 0}%
-          </span>
-          <span className="legend__value tnum">{formatMoney(slice.value, currency)}</span>
+          {/* Процента здесь нет намеренно: долю показывает само кольцо,
+              и рядом с ним колонка процентов дублирует картинку, а строку
+              делает из двух колонок трёхколонной. Число отвечает на другой
+              вопрос — сколько это в деньгах. */}
+          <span className="legend__value money">{formatMoney(slice.value, currency)}</span>
         </li>
       ))}
     </ul>
@@ -137,7 +154,7 @@ export interface BarPoint {
 }
 
 export function GroupedBars({
-  points, currency, height = 180,
+  points, currency, height = 220,
 }: { points: BarPoint[]; currency: string; height?: number }) {
   const [active, setActive] = useState<number | null>(null);
   const entrance = useEntrance();
@@ -147,6 +164,10 @@ export function GroupedBars({
   return (
     <div className="bars">
       <div className="bars__plot" style={{ height }}>
+        {/* Нулевая линия — ось, от которой отсчитываются столбцы.
+            Опорные линии выше неё были бы сеткой поверх сетки страницы,
+            а вот основание нужно: без него столбцы висят в пустоте. */}
+        <div className="bars__base" />
         {points.map((point, index) => (
           <div
             key={point.label}

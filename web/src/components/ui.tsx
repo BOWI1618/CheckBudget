@@ -153,7 +153,7 @@ export function CategoryDot({ color, icon, size = 36 }: { color: string; icon: s
   );
 }
 
-export function ProgressBar({ value, tone }: { value: number; tone: 'ok' | 'warn' | 'over' }) {
+export function ProgressBar({ value, tone }: { value: number; tone: 'ok' | 'warn' | 'over' | 'goal' }) {
   return (
     <div className={`progress progress--${tone}`}>
       <div className="progress__fill" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />

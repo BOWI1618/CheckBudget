@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { convert, parseRate, parseAmount, formatMoney, toInputValue } from './money.js';
+import { convert, parseRate, parseAmount, formatMoney, toInputValue, plural, countOf } from './money.js';
 
 test('parseRate не теряет точность', () => {
   assert.deepEqual(parseRate('92.4567'), { num: 924567, den: 10000 });
@@ -74,4 +74,18 @@ test('toInputValue — обратная операция к parseAmount', () => 
   for (const s of ['2500,00', '0,07', '123456,78']) {
     assert.equal(toInputValue(parseAmount(s, 'RUB'), 'RUB'), s);
   }
+});
+
+test('plural согласует счётные формы по-русски', () => {
+  const forms: [string, string, string] = ['операция', 'операции', 'операций'];
+  const cases: Array<[number, string]> = [
+    [1, 'операция'], [2, 'операции'], [4, 'операции'], [5, 'операций'],
+    [11, 'операций'], [12, 'операций'], [14, 'операций'],  // подводный камень: 11–14 всегда третья форма
+    [21, 'операция'], [22, 'операции'], [25, 'операций'],
+    [48, 'операций'], [101, 'операция'], [111, 'операций'], [0, 'операций'],
+  ];
+  for (const [n, expected] of cases) {
+    assert.equal(plural(n, forms), expected, `${n} → ожидалось «${expected}»`);
+  }
+  assert.equal(countOf(48, forms), '48 операций');
 });

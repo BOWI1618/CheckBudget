@@ -5,9 +5,12 @@ import { useCanEdit, useCategoryTree } from '../data/hooks.js';
 import { Card, CardTitle, Button, Sheet, Field, Segmented, CategoryDot } from '../components/ui.js';
 import { Icon, ICON_NAMES } from '../components/Icon.js';
 
+/* Приглушённая палитра одного семейства: цвет здесь различает соседние
+   строки, а не спорит с интерфейсом за внимание. Категорию всё равно
+   опознают по названию и значку. */
 const PALETTE = [
-  '#e5484d', '#f76b15', '#f5a524', '#22c55e', '#12a594',
-  '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#64748b',
+  '#a35c5c', '#a8724a', '#97733f', '#7a6a3f', '#4b7f6a',
+  '#47788a', '#4a6a94', '#5a6e8c', '#6b5f8a', '#8a5f78', '#6c7480',
 ];
 
 type Kind = 'expense' | 'income';
