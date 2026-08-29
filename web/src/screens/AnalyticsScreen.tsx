@@ -115,7 +115,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
           <span className="kpi__value tnum">
             {/* Тот же знак минуса, что и в суммах: «−», а не дефис. */}
             {delta === null ? '—' : `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}%`}
-            <span className="tone-muted" style={{ fontSize: 13, fontWeight: 500, marginLeft: 8 }}>
+            <span className="tone-muted" style={{ fontSize: 'var(--t-small)', fontWeight: 500, marginLeft: 8 }}>
               {formatMoney(analysis.prior, base)}
             </span>
           </span>
@@ -168,7 +168,9 @@ export function AnalyticsScreen({ period }: { period: string }) {
                 <div className="list-row__sub">{formatShortDate(item.day)}</div>
               </div>
               <span className="leader" aria-hidden="true" />
-              <span className="money" style={{ fontWeight: 600 }}>{formatMoney(item.amount, base)}</span>
+              <span className="money" style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
+                {formatMoney(item.amount, base)}
+              </span>
             </div>
           ))
         )}

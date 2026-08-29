@@ -65,7 +65,7 @@ export function TransactionsScreen({
       </Card>
 
       <Card>
-        <CardTitle action={<span className="money" style={{ fontSize: 14, fontWeight: 620 }}>
+        <CardTitle action={<span className="money" style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
           {formatMoney(total, base, { sign: total > 0 })}
         </span>}>
           {items.length} операц.
@@ -157,12 +157,12 @@ function TransactionDetails({
     >
       <div style={{ textAlign: 'center', padding: '6px 0 10px' }}>
         <div className={`money ${tx.type === 'income' ? 'tone-income' : tx.type === 'expense' ? 'tone-expense' : ''}`}
-             style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.03em' }}>
+             style={{ fontSize: 'var(--t-display)', fontWeight: 700, letterSpacing: '-0.03em' }}>
           {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
           {formatMoney(tx.amountMinor, tx.currency)}
         </div>
         {tx.currency !== baseCurrency && tx.baseAmountMinor !== null && (
-          <div className="tone-muted tnum" style={{ fontSize: 14 }}>
+          <div className="tone-muted tnum" style={{ fontSize: 'var(--t-base)' }}>
             ≈ {formatMoney(tx.baseAmountMinor, baseCurrency)}
           </div>
         )}
@@ -172,7 +172,7 @@ function TransactionDetails({
         {rows.map(([label, value]) => (
           <div className="list-row" key={label}>
             <span className="list-row__body list-row__sub">{label}</span>
-            <span style={{ fontSize: 14, fontWeight: 520, textAlign: 'right' }}>{value}</span>
+            <span style={{ fontSize: 'var(--t-base)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
           </div>
         ))}
       </div>

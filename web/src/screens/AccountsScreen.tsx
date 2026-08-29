@@ -42,7 +42,7 @@ export function AccountsScreen() {
         <Card key={currency}>
           <CardTitle
             action={
-              <span className="money" style={{ fontSize: 15, fontWeight: 640 }}>
+              <span className="money" style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
                 {formatMoney(list.reduce((s, a) => s + a.balanceMinor, 0), currency)}
               </span>
             }
@@ -59,7 +59,7 @@ export function AccountsScreen() {
               </div>
               <span className="leader" aria-hidden="true" />
               <span className={`money ${account.balanceMinor < 0 ? 'tone-expense' : ''}`}
-                    style={{ fontWeight: 600 }}>
+                    style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
                 {formatMoney(account.balanceMinor, account.currency)}
               </span>
             </button>
@@ -82,7 +82,9 @@ export function AccountsScreen() {
                 <div className="list-row__title">{account.name}</div>
               </div>
               <span className="leader" aria-hidden="true" />
-              <span className="money">{formatMoney(account.balanceMinor, account.currency)}</span>
+              <span className="money" style={{ fontSize: 'var(--t-base)' }}>
+                {formatMoney(account.balanceMinor, account.currency)}
+              </span>
             </button>
           ))}
         </Card>

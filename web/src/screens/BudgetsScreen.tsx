@@ -50,7 +50,7 @@ export function BudgetsScreen({ period }: { period: string }) {
           />
         ) : (
           <>
-            <div className="limit__nums" style={{ marginBottom: 8, fontSize: 14 }}>
+            <div className="limit__nums" style={{ marginBottom: 8, fontSize: 'var(--t-base)' }}>
               <span className="money">Потрачено {formatMoney(totals.spent, base)}</span>
               <span className="tnum tone-muted">
                 {totals.spent > totals.limit

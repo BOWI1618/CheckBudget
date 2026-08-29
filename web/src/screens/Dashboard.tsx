@@ -169,7 +169,7 @@ export function Dashboard({
               <div className="limit" key={limit.id}>
                 <div className="limit__top">
                   <span className="limit__name">{category?.name ?? 'Категория'}</span>
-                  <span className={`money ${pct > 100 ? 'tone-expense' : 'tone-muted'}`} style={{ fontSize: 13 }}>
+                  <span className={`money ${pct > 100 ? 'tone-expense' : 'tone-muted'}`} style={{ fontSize: 'var(--t-small)' }}>
                     {Math.round(pct)}%
                   </span>
                 </div>
@@ -200,7 +200,7 @@ export function Dashboard({
         <Card>
           <CardTitle>Доходы и расходы</CardTitle>
           <GroupedBars points={stats.months} currency={base} />
-          <div className="row" style={{ gap: 16, marginTop: 12, fontSize: 12.5 }}>
+          <div className="row" style={{ gap: 16, marginTop: 12, fontSize: 'var(--t-small)' }}>
             <span className="row" style={{ gap: 6 }}>
               <span className="legend__swatch" style={{ background: 'var(--income)' }} /> доходы
             </span>
@@ -221,7 +221,7 @@ export function Dashboard({
                 <div className="limit__top">
                   <Icon name={goal.icon} size={17} />
                   <span className="limit__name">{goal.name}</span>
-                  <span className="tnum tone-muted" style={{ fontSize: 13 }}>{Math.round(pct)}%</span>
+                  <span className="tnum tone-muted" style={{ fontSize: 'var(--t-small)' }}>{Math.round(pct)}%</span>
                 </div>
                 <ProgressBar value={pct} tone="ok" />
                 <div className="limit__nums">

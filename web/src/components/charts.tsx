@@ -147,11 +147,6 @@ export function GroupedBars({
   return (
     <div className="bars">
       <div className="bars__plot" style={{ height }}>
-        {/* Опорные линии дают глазу шкалу без подписей осей —
-            точные значения всё равно читаются в подсказке. */}
-        {[0.25, 0.5, 0.75, 1].map((r) => (
-          <div key={r} className="bars__grid" style={{ bottom: `${r * 100}%` }} />
-        ))}
         {points.map((point, index) => (
           <div
             key={point.label}

@@ -50,12 +50,12 @@ export function CategoriesScreen() {
           >
             <span className="row" style={{ gap: 10 }}>
               <CategoryDot color={root.color} icon={root.icon} size={30} />
-              <span style={{ color: 'var(--text)', fontSize: 15, fontWeight: 600 }}>{root.name}</span>
+              <span style={{ color: 'var(--text)', fontSize: 'var(--t-base)', fontWeight: 600 }}>{root.name}</span>
             </span>
           </CardTitle>
 
           {root.children.length === 0 ? (
-            <p className="tone-muted" style={{ fontSize: 13, margin: '0 0 4px 4px' }}>
+            <p className="tone-muted" style={{ fontSize: 'var(--t-small)', margin: '0 0 4px 4px' }}>
               Без подкатегорий
             </p>
           ) : (

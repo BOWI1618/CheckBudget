@@ -47,7 +47,7 @@ export function MembersScreen() {
               <div className="cat-dot" style={{
                 width: 38, height: 38,
                 background: 'var(--accent-soft)', color: 'var(--accent)',
-                fontWeight: 650, fontSize: 15,
+                fontWeight: 650, fontSize: 'var(--t-base)',
               }}>
                 {member.displayName.slice(0, 1).toUpperCase()}
               </div>
@@ -61,7 +61,7 @@ export function MembersScreen() {
               {isOwner && !isMe && member.role !== 'owner' ? (
                 <div className="row" style={{ gap: 6 }}>
                   <select
-                    className="select" style={{ width: 'auto', padding: '6px 10px', fontSize: 13 }}
+                    className="select" style={{ width: 'auto', padding: '6px 10px', fontSize: 'var(--t-small)' }}
                     value={member.role}
                     onChange={(e) => store.changeMemberRole(member.userId, e.target.value as 'editor' | 'viewer')}
                   >
@@ -88,7 +88,7 @@ export function MembersScreen() {
 
       <Card>
         <CardTitle>Присоединиться к чужому бюджету</CardTitle>
-        <p className="tone-muted" style={{ fontSize: 13.5, margin: '0 0 12px' }}>
+        <p className="tone-muted" style={{ fontSize: 'var(--t-small)', margin: '0 0 12px' }}>
           Если вам прислали код приглашения — введите его здесь.
         </p>
         <Button variant="secondary" full onClick={() => setJoinOpen(true)}>Ввести код</Button>
@@ -102,7 +102,7 @@ export function MembersScreen() {
             <div className="list-row__body"><div className="list-row__sub">{ROLE_HINT[role]}</div></div>
           </div>
         ))}
-        <p className="tone-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="tone-muted" style={{ fontSize: 'var(--t-small)', marginBottom: 0 }}>
           Права проверяются на сервере при каждом запросе, а не только скрытием кнопок.
         </p>
       </Card>
@@ -120,7 +120,7 @@ export function MembersScreen() {
       >
         {code ? (
           <>
-            <p className="tone-muted" style={{ fontSize: 13.5, margin: 0 }}>
+            <p className="tone-muted" style={{ fontSize: 'var(--t-small)', margin: 0 }}>
               Передайте этот код тому, кого приглашаете. Код действует 72 часа
               и сработает один раз.
             </p>
@@ -183,7 +183,7 @@ export function MembersScreen() {
           </>
         }
       >
-        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 'var(--t-base)', lineHeight: 1.5 }}>
           Участник потеряет доступ к бюджету немедленно — в том числе открытые
           у него вкладки перестанут получать обновления. Добавленные им операции
           останутся в бюджете.
