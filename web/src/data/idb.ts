@@ -15,9 +15,26 @@ const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+/**
+ * Сколько ждём открытия хранилища, прежде чем работать без кеша.
+ *
+ * Открытие может не завершиться никогда: соединение другой вкладки блокирует
+ * смену версии, а незавершённое удаление базы блокирует любое открытие. Без
+ * ограничения по времени приложение зависало на скелетонах при живой сети —
+ * запрос снимка стоит в очереди за чтением кеша, которое уже не разрешится.
+ * Кеш необязателен, сеть обязательна, поэтому ждём его ограниченно.
+ */
+const OPEN_TIMEOUT_MS = 3000;
+
 function open(): Promise<IDBDatabase> {
   if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
+    dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('IndexedDB не открылась вовремя')),
+        OPEN_TIMEOUT_MS,
+      );
+      const settle = (fn: () => void) => { clearTimeout(timer); fn(); };
+
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = () => {
         const db = req.result;
@@ -26,9 +43,14 @@ function open(): Promise<IDBDatabase> {
           db.createObjectStore('outbox', { keyPath: 'id' }).createIndex('createdAt', 'createdAt');
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => settle(() => resolve(req.result));
+      req.onerror = () => settle(() => reject(req.error));
+      req.onblocked = () => settle(() => reject(new Error('IndexedDB заблокирована другой вкладкой')));
     });
+
+    // Неудачную попытку не запоминаем: блокировка временная, и следующее
+    // обращение должно пробовать заново, а не наследовать отказ навсегда.
+    dbPromise.catch(() => { dbPromise = null; });
   }
   return dbPromise;
 }
