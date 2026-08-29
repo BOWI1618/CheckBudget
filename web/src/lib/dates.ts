@@ -2,6 +2,8 @@ const MONTHS_GEN = ['января', 'февраля', 'марта', 'апрел�
   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const MONTHS_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const MONTHS_PREP = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне',
+  'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре'];
 const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн',
   'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
@@ -28,6 +30,27 @@ export function shiftPeriod(period: string, delta: number): string {
 export function formatPeriod(period: string): string {
   const [year, month] = period.split('-').map(Number) as [number, number];
   const name = MONTHS_NOM[month - 1] ?? period;
+  return year === new Date().getFullYear() ? name : `${name} ${year}`;
+}
+
+/**
+ * Месяц в родительном и предложном падежах: «против июля», «в июле было».
+ *
+ * Именительный падеж в такие фразы подставлять нельзя — получается
+ * «против июль». Отдельные функции, а не склонение на лету: падежей нужно
+ * ровно два, и списки короче любого правила.
+ */
+export function periodGen(period: string): string {
+  return withYear(period, MONTHS_GEN);
+}
+
+export function periodPrep(period: string): string {
+  return withYear(period, MONTHS_PREP);
+}
+
+function withYear(period: string, names: string[]): string {
+  const [year, month] = period.split('-').map(Number) as [number, number];
+  const name = names[month - 1] ?? period;
   return year === new Date().getFullYear() ? name : `${name} ${year}`;
 }
 

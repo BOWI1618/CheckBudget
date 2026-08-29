@@ -4,7 +4,7 @@ import { useApp, useLookups } from '../data/hooks.js';
 import { Card, EmptyState, Segmented } from '../components/ui.js';
 import { RankedBars, StackedMonths, AreaLine, type Slice } from '../components/charts.js';
 import { CategoryDot } from '../components/ui.js';
-import { periodBounds, formatPeriod, lastMonths, shortMonth, shiftPeriod, formatShortDate } from '../lib/dates.js';
+import { periodBounds, formatPeriod, periodGen, periodPrep, lastMonths, shortMonth, shiftPeriod, formatShortDate } from '../lib/dates.js';
 
 type Kind = 'expense' | 'income';
 
@@ -150,7 +150,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
         </Card>
 
         <Card className="kpi">
-          <span className="kpi__label">Против {formatPeriod(analysis.previous).toLowerCase()}</span>
+          <span className="kpi__label">Против {periodGen(analysis.previous)}</span>
           {/* Рост расходов — плохая новость, рост доходов — хорошая, поэтому
               одно и то же «+4%» красится по-разному. Цвет здесь несёт вывод,
               которого в самом числе нет. */}
@@ -162,7 +162,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
           </span>
           <span className="kpi__sub">
             {analysis.prior > 0
-              ? `в ${formatPeriod(analysis.previous).toLowerCase()} было ${formatMoney(analysis.prior, base)}`
+              ? `в ${periodPrep(analysis.previous)} было ${formatMoney(analysis.prior, base)}`
               : 'сравнивать не с чем'}
           </span>
         </Card>
@@ -172,7 +172,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
           {analysis.movers.length === 0 ? (
             <span className="kpi__sub" style={{ marginTop: 6 }}>
               {analysis.priorLoaded ? 'Все статьи держатся прошлого месяца.'
-                : 'Прошлый месяц ещё не загружен — пролистайте period назад.'}
+                : 'Прошлый месяц ещё не загружен — пролистайте период назад стрелкой в шапке.'}
             </span>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
@@ -195,7 +195,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
         <header className="card__head">
           <h2 className="card__title">Накопительно за месяц</h2>
           <span className="card__note">
-            пунктир — темп {formatPeriod(analysis.previous).toLowerCase()}; выше него значит тратим быстрее
+            пунктир — темп {periodGen(analysis.previous)}; выше него значит тратим быстрее
           </span>
         </header>
         {analysis.current === 0 ? (
@@ -205,7 +205,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
             values={analysis.cumulative} labels={analysis.days} currency={base}
             color={kind === 'expense' ? 'var(--accent)' : 'var(--income)'}
             pace={analysis.prior}
-            paceLabel={`Темп ${formatPeriod(analysis.previous).toLowerCase()}`}
+            paceLabel={`Темп ${periodGen(analysis.previous)}`}
           />
         )}
       </Card>
@@ -236,7 +236,10 @@ export function AnalyticsScreen({ period }: { period: string }) {
           <h2 className="card__title">
             Самые крупные {kind === 'expense' ? 'расходы' : 'поступления'}
           </h2>
-          <span className="card__note">пять операций из {analysis.count}</span>
+          <span className="card__note">
+            {analysis.largest.length} {plural(analysis.largest.length, ['операция', 'операции', 'операций'])}
+            {' из '}{analysis.count}
+          </span>
         </header>
         {analysis.largest.length === 0 ? (
           <EmptyState icon="list" title="Нет операций за период" />
