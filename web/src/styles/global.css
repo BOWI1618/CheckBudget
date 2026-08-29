@@ -1,174 +1,198 @@
-/* ── Дизайн-токены ────────────────────────────────────────────────────────
+/* ── Дизайн-система ───────────────────────────────────────────────────────
 
-   Направление — выписка на хорошей бумаге и физическая банковская карта.
-   Отсюда два решения, задающие весь остальной вид:
+   Направление взято из того, чем люди ведут бюджет на самом деле:
+   ТЕТРАДЬ В КЛЕТКУ и КАССОВЫЙ ЧЕК.
 
-   1. Карточка баланса ИНВЕРТИРОВАНА — тёмная на светлом фоне. Это не приём
-      ради приёма: баланс здесь буквально «карта», и тёмный прямоугольник
-      читается как она. Заодно решается иерархия — главное число перестаёт
-      быть одной из десятка одинаковых карточек.
+   Отсюда три решения, задающие весь остальной вид.
 
-   2. Цвет несёт смысл, а не украшает. Акцент один, смысловых два
-      (расход / доход), предупреждение третье. Если элемент цветной —
-      цвет что-то сообщает.
+   1. Фон страницы — поле в клетку. Не текстура ради текстуры: шаг клетки
+      равен модулю отступов, то есть сетка настоящая, и по ней действительно
+      выровнено содержимое. Карточки лежат поверх неё белыми листками —
+      поэтому им не нужны тени, слоистость даёт сама бумага.
 
-   Нейтральные тона со сдвигом в синий: чистый серый рядом с индиго
-   выглядит грязным.                                                        */
+   2. Деньги набраны моноширинным шрифтом и живут в правой колонке, к которой
+      от подписи тянется пунктирная выноска — грамматика чека. Табличные
+      цифры выстраивают суммы разряд в разряд, и колонку можно читать
+      сверху вниз, не сравнивая числа глазами по одному.
+
+   3. Цвета — чернила. Основной текст сине-чёрный, а не чёрный; акцент —
+      синяя шариковая ручка; расход — красная ручка, которой исправляют.
+      Чистого чёрного и «фирменного градиента» в системе нет.               */
 
 :root {
-  --bg:            #f4f5f8;
-  --surface:       #ffffff;
-  --surface-2:     #eef0f4;
-  --surface-hover: #e7eaf0;
-  --border:        #e2e6ed;
-  --border-strong: #cbd2dd;
+  --paper:        #fbfbf9;
+  --slip:         #ffffff;
+  --slip-2:       #f4f5f3;
+  --slip-hover:   #eef0ee;
+  --rule:         #dfe2e4;
+  --rule-strong:  #c3c8cd;
+  --grid-line:    rgba(20, 33, 61, 0.055);
+  --grid-step:    24px;
 
-  --text:          #0f1420;
-  --text-muted:    #5d6a80;
-  --text-subtle:   #8b97a9;
+  --ink:          #14213d;
+  --ink-2:        #56607a;
+  --ink-3:        #8a93a6;
 
-  --accent:        #5147e5;
-  --accent-hover:  #4038d4;
-  --accent-soft:   #ecebff;
-  --on-accent:     #ffffff;
+  /* Синяя шариковая ручка. */
+  --pen:          #1f4fd8;
+  --pen-hover:    #1840b8;
+  --pen-soft:     #e8edfd;
+  --on-pen:       #ffffff;
 
-  --expense:       #dc3b46;
-  --expense-soft:  #fdecec;
-  --income:        #12925e;
-  --income-soft:   #e4f6ed;
-  --warning:       #b26a00;
-  --warning-soft:  #fdf1dd;
+  /* Красная ручка — расход; зелёные чернила — доход. */
+  --minus:        #c8322c;
+  --minus-soft:   #fbeceb;
+  --plus:         #1b7a4b;
+  --plus-soft:    #e6f3ec;
+  --flag:         #a86a08;
+  --flag-soft:    #fbf1de;
 
-  /* Инвертированная поверхность — карточка баланса. */
-  --invert-from:   #171b2b;
-  --invert-to:     #232840;
-  --invert-text:   #f3f5fb;
-  --invert-muted:  #9aa4bf;
-  --invert-line:   rgba(255, 255, 255, 0.12);
+  /* Совместимость с прежними именами токенов. */
+  --bg: var(--paper);
+  --surface: var(--slip);
+  --surface-2: var(--slip-2);
+  --surface-hover: var(--slip-hover);
+  --border: var(--rule);
+  --border-strong: var(--rule-strong);
+  --text: var(--ink);
+  --text-muted: var(--ink-2);
+  --text-subtle: var(--ink-3);
+  --accent: var(--pen);
+  --accent-hover: var(--pen-hover);
+  --accent-soft: var(--pen-soft);
+  --on-accent: var(--on-pen);
+  --expense: var(--minus);
+  --expense-soft: var(--minus-soft);
+  --income: var(--plus);
+  --income-soft: var(--plus-soft);
+  --warning: var(--flag);
+  --warning-soft: var(--flag-soft);
 
-  --radius-sm: 10px;
-  --radius:    18px;
-  --radius-lg: 24px;
+  /* Радиус маленький: это край нарезанной бумаги, а не скруглённая
+     карточка интерфейса. */
+  --radius-sm: 3px;
+  --radius:    4px;
+  --radius-lg: 6px;
 
-  /* Тени многослойные: одна размытая тень выглядит как ореол,
-     две — как настоящий подъём над поверхностью. */
-  --shadow-card: 0 1px 2px rgba(15, 20, 32, 0.05),
-                 0 2px 6px rgba(15, 20, 32, 0.04);
-  --shadow-lift: 0 2px 4px rgba(15, 20, 32, 0.06),
-                 0 12px 28px rgba(15, 20, 32, 0.10);
-  --shadow-pop:  0 4px 12px rgba(15, 20, 32, 0.10),
-                 0 24px 60px rgba(15, 20, 32, 0.22);
-  --shadow-hero: 0 2px 6px rgba(15, 20, 32, 0.14),
-                 0 18px 44px rgba(15, 20, 32, 0.24);
+  /* Теней в системе почти нет — глубину даёт слой бумаги на клетке.
+     Всплывающие панели — единственное исключение: они действительно
+     находятся над листом. */
+  --shadow-card: none;
+  --shadow-lift: none;
+  --shadow-pop:  0 2px 8px rgba(20, 33, 61, 0.10),
+                 0 24px 64px rgba(20, 33, 61, 0.22);
 
-  /* ── Движение ────────────────────────────────────────────────────────
-     Одна кривая на всё приложение: сильный ease-out, при котором элемент
-     быстро выходит и мягко оседает. В приложении про деньги движение
-     должно читаться как точность, а не как игривость — поэтому никаких
-     отскоков и пружин.                                                   */
-  --ease:      cubic-bezier(0.16, 1, 0.3, 1);
+  --ease:      cubic-bezier(0.2, 0.9, 0.25, 1);
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
-  --dur-tap:   120ms;
-  --dur-fast:  180ms;
-  --dur:       300ms;
-  --dur-slow:  560ms;
-  --dur-chart: 820ms;
+  --dur-tap:   110ms;
+  --dur-fast:  160ms;
+  --dur:       260ms;
+  --dur-slow:  480ms;
+  --dur-chart: 760ms;
 
   --nav-h: 62px;
   --safe-b: env(safe-area-inset-bottom, 0px);
 
-  --font: 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  --font: 'Golos Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
           'Helvetica Neue', Arial, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg:            #0a0d14;
-    --surface:       #12161f;
-    --surface-2:     #1a1f2b;
-    --surface-hover: #222836;
-    --border:        #232936;
-    --border-strong: #333b4d;
+    --paper:       #0f131a;
+    --slip:        #171c25;
+    --slip-2:      #1e242f;
+    --slip-hover:  #262d3a;
+    --rule:        #2a313d;
+    --rule-strong:  #3c4553;
+    --grid-line:   rgba(150, 175, 220, 0.05);
 
-    --text:          #eef1f7;
-    --text-muted:    #98a3b8;
-    --text-subtle:   #6a7488;
+    --ink:         #e9edf5;
+    --ink-2:       #97a1b5;
+    --ink-3:       #69738a;
 
-    --accent:        #8b83f7;
-    --accent-hover:  #9d96f9;
-    --accent-soft:   #1e1d3c;
-    --on-accent:     #0a0d14;
+    --pen:         #7d9dff;
+    --pen-hover:   #92aeff;
+    --pen-soft:    #17203a;
+    --on-pen:      #0f131a;
 
-    --expense:       #ff6b70;
-    --expense-soft:  #2b1518;
-    --income:        #3ad68d;
-    --income-soft:   #0e2620;
-    --warning:       #f0b13d;
-    --warning-soft:  #2a2011;
+    --minus:       #ff6f66;
+    --minus-soft:  #2a1614;
+    --plus:        #3fcb86;
+    --plus-soft:   #0f2620;
+    --flag:        #e0a63c;
+    --flag-soft:   #2a2113;
 
-    /* В тёмной теме карточка баланса не инвертируется, а приподнимается:
-       инверсия на тёмном фоне дала бы светлый прямоугольник, который бьёт
-       по глазам в темноте. */
-    --invert-from:   #1b2133;
-    --invert-to:     #262d45;
-    --invert-text:   #f3f5fb;
-    --invert-muted:  #9aa4bf;
-    --invert-line:   rgba(255, 255, 255, 0.10);
-
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
-    --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 32px rgba(0, 0, 0, 0.45);
-    --shadow-pop:  0 6px 18px rgba(0, 0, 0, 0.6), 0 28px 70px rgba(0, 0, 0, 0.6);
-    --shadow-hero: 0 2px 8px rgba(0, 0, 0, 0.5), 0 20px 48px rgba(0, 0, 0, 0.55);
+    --shadow-pop:  0 4px 14px rgba(0, 0, 0, 0.5),
+                   0 30px 70px rgba(0, 0, 0, 0.6);
   }
 }
 
 :root[data-theme='dark'] {
-  --bg:            #0a0d14;
-  --surface:       #12161f;
-  --surface-2:     #1a1f2b;
-  --surface-hover: #222836;
-  --border:        #232936;
-  --border-strong: #333b4d;
-  --text:          #eef1f7;
-  --text-muted:    #98a3b8;
-  --text-subtle:   #6a7488;
-  --accent:        #8b83f7;
-  --accent-hover:  #9d96f9;
-  --accent-soft:   #1e1d3c;
-  --on-accent:     #0a0d14;
-  --expense:       #ff6b70;
-  --expense-soft:  #2b1518;
-  --income:        #3ad68d;
-  --income-soft:   #0e2620;
-  --warning:       #f0b13d;
-  --warning-soft:  #2a2011;
-  --invert-from:   #1b2133;
-  --invert-to:     #262d45;
-  --invert-text:   #f3f5fb;
-  --invert-muted:  #9aa4bf;
-  --invert-line:   rgba(255, 255, 255, 0.10);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 32px rgba(0, 0, 0, 0.45);
-  --shadow-pop:  0 6px 18px rgba(0, 0, 0, 0.6), 0 28px 70px rgba(0, 0, 0, 0.6);
-  --shadow-hero: 0 2px 8px rgba(0, 0, 0, 0.5), 0 20px 48px rgba(0, 0, 0, 0.55);
+  --paper:       #0f131a;
+  --slip:        #171c25;
+  --slip-2:      #1e242f;
+  --slip-hover:  #262d3a;
+  --rule:        #2a313d;
+  --rule-strong: #3c4553;
+  --grid-line:   rgba(150, 175, 220, 0.05);
+  --ink:         #e9edf5;
+  --ink-2:       #97a1b5;
+  --ink-3:       #69738a;
+  --pen:         #7d9dff;
+  --pen-hover:   #92aeff;
+  --pen-soft:    #17203a;
+  --on-pen:      #0f131a;
+  --minus:       #ff6f66;
+  --minus-soft:  #2a1614;
+  --plus:        #3fcb86;
+  --plus-soft:   #0f2620;
+  --flag:        #e0a63c;
+  --flag-soft:   #2a2113;
+  --shadow-pop:  0 4px 14px rgba(0, 0, 0, 0.5), 0 30px 70px rgba(0, 0, 0, 0.6);
 }
 
 * { box-sizing: border-box; }
 
 html, body, #root { height: 100%; }
 
+/* Поле в клетку. Шаг равен модулю отступов, поэтому сетка не декоративная:
+   по ней действительно выровнено содержимое. Линии еле видны — они задают
+   ощущение бумаги, а не рябят под текстом. */
 body {
   margin: 0;
   font-family: var(--font);
-  background: var(--bg);
   color: var(--text);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: var(--grid-step) var(--grid-step);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
 
-/* Денежные значения выравниваются по разрядам — иначе колонки сумм
-   «пляшут» и их невозможно быстро сравнивать глазом. */
-.tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+/* Все числа — моноширинные и табличные. Это не стилизация: денежная колонка
+   читается сверху вниз только тогда, когда разряды стоят друг под другом. */
+.tnum,
+.money {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.02em;
+}
+
+/* Микро-подпись: моноширинная, прописными, с разрядкой — голос чека.
+   Применяется к заголовкам блоков и служебным меткам. */
+.stamp {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
 
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; border: none; background: none; padding: 0; }

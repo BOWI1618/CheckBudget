@@ -75,7 +75,7 @@ export function AnimatedNumber({
   }, [value, duration]);
 
   return (
-    <span className={`tnum ${className}`}>
+    <span className={`money ${className}`}>
       {formatMoney(shown, currency, { sign, showFraction })}
     </span>
   );

@@ -51,7 +51,7 @@ export function BudgetsScreen({ period }: { period: string }) {
         ) : (
           <>
             <div className="limit__nums" style={{ marginBottom: 8, fontSize: 14 }}>
-              <span className="tnum">Потрачено {formatMoney(totals.spent, base)}</span>
+              <span className="money">Потрачено {formatMoney(totals.spent, base)}</span>
               <span className="tnum tone-muted">
                 {totals.spent > totals.limit
                   ? `превышение на ${formatMoney(totals.spent - totals.limit, base)}`
@@ -96,10 +96,10 @@ export function BudgetsScreen({ period }: { period: string }) {
                 <>
                   <ProgressBar value={pct} tone={tone} />
                   <div className="limit__nums">
-                    <span className="tnum">
+                    <span className="money">
                       {formatMoney(limit.spentMinor, base)} из {formatMoney(limit.limitMinor, base)}
                     </span>
-                    <span className={`tnum ${tone === 'over' ? 'tone-expense' : tone === 'warn' ? '' : 'tone-muted'}`}>
+                    <span className={`money ${tone === 'over' ? 'tone-expense' : tone === 'warn' ? '' : 'tone-muted'}`}>
                       {tone === 'over'
                         ? `превышен на ${formatMoney(limit.spentMinor - limit.limitMinor, base)}`
                         : `осталось ${formatMoney(limit.limitMinor - limit.spentMinor, base)}`}

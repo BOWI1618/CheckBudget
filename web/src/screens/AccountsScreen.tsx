@@ -42,7 +42,7 @@ export function AccountsScreen() {
         <Card key={currency}>
           <CardTitle
             action={
-              <span className="tnum" style={{ fontSize: 15, fontWeight: 640 }}>
+              <span className="money" style={{ fontSize: 15, fontWeight: 640 }}>
                 {formatMoney(list.reduce((s, a) => s + a.balanceMinor, 0), currency)}
               </span>
             }
@@ -57,8 +57,9 @@ export function AccountsScreen() {
                 <div className="list-row__title">{account.name}</div>
                 <div className="list-row__sub">{TYPES.find((t) => t.value === account.type)?.label}</div>
               </div>
-              <span className={`tnum ${account.balanceMinor < 0 ? 'tone-expense' : ''}`}
-                    style={{ fontWeight: 620 }}>
+              <span className="leader" aria-hidden="true" />
+              <span className={`money ${account.balanceMinor < 0 ? 'tone-expense' : ''}`}
+                    style={{ fontWeight: 600 }}>
                 {formatMoney(account.balanceMinor, account.currency)}
               </span>
             </button>
@@ -80,7 +81,8 @@ export function AccountsScreen() {
               <div className="list-row__body">
                 <div className="list-row__title">{account.name}</div>
               </div>
-              <span className="tnum">{formatMoney(account.balanceMinor, account.currency)}</span>
+              <span className="leader" aria-hidden="true" />
+              <span className="money">{formatMoney(account.balanceMinor, account.currency)}</span>
             </button>
           ))}
         </Card>

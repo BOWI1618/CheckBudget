@@ -65,7 +65,7 @@ export function TransactionsScreen({
       </Card>
 
       <Card>
-        <CardTitle action={<span className="tnum" style={{ fontSize: 14, fontWeight: 620 }}>
+        <CardTitle action={<span className="money" style={{ fontSize: 14, fontWeight: 620 }}>
           {formatMoney(total, base, { sign: total > 0 })}
         </span>}>
           {items.length} операц.
@@ -156,7 +156,7 @@ function TransactionDetails({
       ) : undefined}
     >
       <div style={{ textAlign: 'center', padding: '6px 0 10px' }}>
-        <div className={`tnum ${tx.type === 'income' ? 'tone-income' : tx.type === 'expense' ? 'tone-expense' : ''}`}
+        <div className={`money ${tx.type === 'income' ? 'tone-income' : tx.type === 'expense' ? 'tone-expense' : ''}`}
              style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.03em' }}>
           {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
           {formatMoney(tx.amountMinor, tx.currency)}

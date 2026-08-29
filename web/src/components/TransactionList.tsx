@@ -38,7 +38,7 @@ export function TransactionList({
           <Fragment key={day}>
             <div className="tx-day">
               {formatDay(day)}
-              <span className={`tnum ${total < 0 ? 'tone-muted' : 'tone-income'}`}>
+              <span className={`money ${total < 0 ? 'tone-muted' : 'tone-income'}`}>
                 {total === 0 ? '' : formatMoney(total, baseCurrency, { sign: total > 0 })}
               </span>
             </div>
@@ -73,8 +73,12 @@ export function TransactionList({
                     {sub && <span className="tx__sub">{sub}</span>}
                   </span>
 
+                  {/* Пунктирная выноска от подписи к сумме — приём чека,
+                      которым связаны все списки приложения. */}
+                  <span className="leader" aria-hidden="true" />
+
                   <span>
-                    <span className={`tx__amount tnum ${
+                    <span className={`tx__amount money ${
                       tx.type === 'income' ? 'tone-income' : tx.type === 'expense' ? 'tone-expense' : 'tone-muted'
                     }`}>
                       {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}

@@ -267,7 +267,7 @@ export function AreaLine({
       {active !== null && (
         <div className="area__tip">
           <strong>{labels[active]}</strong>
-          <span className="tnum">{formatMoney(values[active] ?? 0, currency)}</span>
+          <span className="money">{formatMoney(values[active] ?? 0, currency)}</span>
         </div>
       )}
     </div>

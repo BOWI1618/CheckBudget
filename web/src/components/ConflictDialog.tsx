@@ -61,11 +61,11 @@ export function ConflictDialog() {
           <span className="field__label">{FIELD_LABEL[field] ?? field}</span>
           <div className="conflict-option">
             <span>Сейчас в бюджете</span>
-            <strong className="tnum">{render(conflict.theirs, field)}</strong>
+            <strong className="money">{render(conflict.theirs, field)}</strong>
           </div>
           <div className="conflict-option" style={{ borderColor: 'var(--accent)' }}>
             <span>Ваше изменение</span>
-            <strong className="tnum">{render(conflict.mine, field)}</strong>
+            <strong className="money">{render(conflict.mine, field)}</strong>
           </div>
         </div>
       ))}

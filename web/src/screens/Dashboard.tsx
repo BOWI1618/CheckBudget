@@ -107,7 +107,11 @@ export function Dashboard({
   return (
     <div className="stack">
       <Card className="hero">
-        <p className="hero__label">Баланс{stats.otherCurrencies > 0 ? ` · ${base}` : ''}</p>
+        {/* «Итого» вместо «Баланс»: экран открывается тем, чем заканчивается
+            чек, и слово должно быть из того же словаря. */}
+        <p className="hero__label">
+          Итого на счетах{stats.otherCurrencies > 0 ? ` · ${base}` : ''}
+        </p>
         {/* Числа переходят, а не подменяются: изменение может прийти
             с другого устройства, и мгновенная подмена не оставила бы следа. */}
         <p className="hero__value">
@@ -152,7 +156,7 @@ export function Dashboard({
           </CardTitle>
           <div className="limit__nums" style={{ marginBottom: 8 }}>
             <span>Потрачено <AnimatedNumber value={spentOnBudgeted} currency={base} /></span>
-            <span className="tnum">из {formatMoney(budgeted, base)}</span>
+            <span className="money">из {formatMoney(budgeted, base)}</span>
           </div>
           <ProgressBar
             value={(spentOnBudgeted / budgeted) * 100}
@@ -165,7 +169,7 @@ export function Dashboard({
               <div className="limit" key={limit.id}>
                 <div className="limit__top">
                   <span className="limit__name">{category?.name ?? 'Категория'}</span>
-                  <span className={`tnum ${pct > 100 ? 'tone-expense' : 'tone-muted'}`} style={{ fontSize: 13 }}>
+                  <span className={`money ${pct > 100 ? 'tone-expense' : 'tone-muted'}`} style={{ fontSize: 13 }}>
                     {Math.round(pct)}%
                   </span>
                 </div>
@@ -221,8 +225,8 @@ export function Dashboard({
                 </div>
                 <ProgressBar value={pct} tone="ok" />
                 <div className="limit__nums">
-                  <span className="tnum">{formatMoney(goal.savedMinor, goal.currency)}</span>
-                  <span className="tnum">из {formatMoney(goal.targetMinor, goal.currency)}</span>
+                  <span className="money">{formatMoney(goal.savedMinor, goal.currency)}</span>
+                  <span className="money">из {formatMoney(goal.targetMinor, goal.currency)}</span>
                 </div>
               </div>
             );

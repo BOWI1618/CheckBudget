@@ -1,15 +1,15 @@
-/* ── Каркас ──────────────────────────────────────────────────────────────
-   Мобильный: вертикальный стек + нижняя навигация + FAB.
-   Десктоп: постоянный сайдбар + многоколоночная сетка.
-   Это две разные раскладки одних данных, а не одна растянутая.            */
+/* ══ Каркас ═════════════════════════════════════════════════════════════
+   Мобильный: вертикальный стек, нижняя навигация, кнопка ввода под большим
+   пальцем. Десктоп: постоянный сайдбар и многоколоночная сетка. Это две
+   раскладки одних данных, а не одна растянутая.                          */
 
 .shell { min-height: 100%; display: flex; flex-direction: column; }
 
 .shell__main {
   flex: 1;
   width: 100%;
-  padding: 12px 16px calc(var(--nav-h) + var(--safe-b) + 84px);
-  max-width: 780px;
+  padding: 16px 16px calc(var(--nav-h) + var(--safe-b) + 88px);
+  max-width: 760px;
   margin: 0 auto;
 }
 
@@ -18,103 +18,137 @@
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px;
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: saturate(150%) blur(10px);
+  border-bottom: 1px solid var(--rule);
 }
-.topbar__title { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; margin: 0; }
+.topbar__title {
+  font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin: 0;
+}
 .topbar__spacer { flex: 1; }
 
+/* Период — не «кнопка выбора», а надпись в шапке листа. */
 .period-picker {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 10px; border-radius: 999px;
-  background: var(--surface); border: 1px solid var(--border);
-  font-size: 14px; font-weight: 550;
+  display: inline-flex; align-items: center;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em;
+  transition: border-color var(--dur-fast) var(--ease-soft),
+              background var(--dur-fast) var(--ease-soft);
 }
+.period-picker:hover { border-color: var(--rule); background: var(--slip); }
 
-/* ── Нижняя навигация (моб.) ────────────────────────────────────────── */
+/* ── Нижняя навигация ───────────────────────────────────────────────── */
 
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
   display: grid; grid-template-columns: repeat(5, 1fr);
   height: calc(var(--nav-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(16px);
-  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--slip) 94%, transparent);
+  backdrop-filter: saturate(150%) blur(14px);
+  border-top: 1px solid var(--rule);
 }
 .tabbar__item {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  color: var(--text-subtle); font-size: 10.5px; font-weight: 550;
-  transition: color .15s;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  color: var(--ink-3);
+  /* Обычный шрифт, а не прописные моноширинные: навигация должна читаться
+     мгновенно, а капитель на 9 пикселях читается медленнее строчных. */
+  font-size: 10.5px; font-weight: 500; letter-spacing: 0.01em;
+  transition: color var(--dur-fast) var(--ease-soft);
 }
-.tabbar__item.is-active { color: var(--accent); }
+/* Активный раздел отмечен чертой сверху — как закладка на странице,
+   а не подсвеченной «таблеткой». */
+.tabbar__item::before {
+  content: ''; position: absolute; top: 0;
+  width: 26px; height: 2px; background: var(--pen);
+  opacity: 0; transform: scaleX(0.3);
+  transition: opacity var(--dur-fast) var(--ease-soft),
+              transform var(--dur-fast) var(--ease);
+}
+.tabbar__item { position: relative; }
+.tabbar__item.is-active { color: var(--pen); }
+.tabbar__item.is-active::before { opacity: 1; transform: none; }
 
-/* Плавающая кнопка — в зоне большого пальца, над навигацией. */
+/* Кнопка ввода расхода — единственный по-настоящему заметный элемент.
+   Квадрат со скруглением бумаги, а не круг: круглая кнопка «плюс» есть
+   в каждом втором приложении. */
 .fab {
   position: fixed; right: 18px; z-index: 31;
-  bottom: calc(var(--nav-h) + var(--safe-b) + 18px);
-  width: 58px; height: 58px; border-radius: 50%;
+  bottom: calc(var(--nav-h) + var(--safe-b) + 20px);
+  width: 56px; height: 56px; border-radius: 14px;
   display: grid; place-items: center;
-  background: var(--accent); color: #fff;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 42%, transparent);
-  transition: transform .12s;
+  background: var(--pen); color: var(--on-pen);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pen) 34%, transparent);
+  transition: transform var(--dur-tap) var(--ease-soft),
+              box-shadow var(--dur) var(--ease-soft);
 }
-.fab:active { transform: scale(0.94); }
+.fab:active { transform: scale(0.93); }
 
-/* ── Сайдбар (десктоп) ──────────────────────────────────────────────── */
+/* ── Сайдбар ────────────────────────────────────────────────────────── */
 
 .sidebar { display: none; }
 
 @media (min-width: 900px) {
   .tabbar, .fab { display: none; }
-
   .shell { flex-direction: row; }
 
   .sidebar {
-    display: flex; flex-direction: column; gap: 4px;
-    width: 240px; flex: 0 0 240px;
-    padding: 16px 12px;
-    border-right: 1px solid var(--border);
-    background: var(--surface);
+    display: flex; flex-direction: column; gap: 2px;
+    width: 232px; flex: 0 0 232px;
+    padding: 18px 12px;
+    border-right: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--slip) 70%, transparent);
     position: sticky; top: 0; height: 100vh;
   }
   .sidebar__brand {
-    display: flex; align-items: center; gap: 10px;
-    padding: 6px 10px 14px; font-weight: 700; font-size: 16px; letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 9px;
+    padding: 4px 10px 18px;
+    font-weight: 700; font-size: 15px; letter-spacing: -0.02em;
   }
   .sidebar__item {
     display: flex; align-items: center; gap: 11px;
-    padding: 9px 11px; border-radius: 10px;
-    color: var(--text-muted); font-size: 14.5px; font-weight: 520;
-    transition: background .12s, color .12s;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    color: var(--ink-2); font-size: 14px; font-weight: 500;
+    transition: background var(--dur-fast) var(--ease-soft),
+                color var(--dur-fast) var(--ease-soft);
   }
-  .sidebar__item:hover { background: var(--surface-hover); color: var(--text); }
-  .sidebar__item.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-  .sidebar__foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+  .sidebar__item:hover { background: var(--slip-2); color: var(--ink); }
+  .sidebar__item.is-active {
+    background: var(--pen-soft); color: var(--pen); font-weight: 600;
+  }
+  .sidebar__foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--rule); }
 
-  .shell__main { max-width: 1240px; padding: 16px 28px 48px; }
-  .topbar { padding: 14px 28px; }
+  .shell__main { max-width: 1180px; padding: 20px 30px 56px; }
+  .topbar { padding: 16px 30px; }
 }
 
-/* ── Карточки ───────────────────────────────────────────────────────── */
+/* ══ Листки ═════════════════════════════════════════════════════════════
+   Белая бумага поверх поля в клетку. Теней нет намеренно: слоистость даёт
+   сама бумага, а тень под каждой карточкой — признак интерфейса, который
+   не доверяет собственной вёрстке.                                       */
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--slip);
+  border: 1px solid var(--rule);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-card);
-  transition: box-shadow var(--dur) var(--ease-soft),
-              border-color var(--dur) var(--ease-soft);
+  transition: border-color var(--dur) var(--ease-soft);
 }
-.card--pad { padding: 16px; }
+.card--pad { padding: 16px 18px; }
 
 .card__head {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   margin-bottom: 14px;
 }
-.card__title { margin: 0; font-size: 14px; font-weight: 620; color: var(--text-muted); letter-spacing: 0.01em; }
+.card__title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--ink-3);
+}
 
 .stack { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; align-items: center; gap: 10px; }
@@ -127,237 +161,308 @@
   .grid-2--wide { grid-template-columns: 1.35fr 1fr; }
 }
 
-/* ── Итоговые показатели ────────────────────────────────────────────── */
+/* ══ Денежная колонка ═══════════════════════════════════════════════════
+   Подпись слева, сумма справа, между ними пунктирная выноска. Это
+   грамматика чека, и она же — то, чем это приложение отличается от других:
+   один и тот же приём во всех списках — операциях, лимитах, счетах,
+   категориях, легенде графика.                                           */
 
-/* ── Карточка баланса ────────────────────────────────────────────────────
-   Инвертирована относительно остального интерфейса: тёмный прямоугольник
-   на светлом фоне читается как физическая карта, а заодно решает иерархию —
-   главное число перестаёт быть одной из десятка одинаковых карточек.       */
+.leader {
+  flex: 1 1 auto;
+  min-width: 10px;
+  align-self: flex-end;
+  margin: 0 8px 6px;
+  border-bottom: 1px dotted var(--rule-strong);
+  opacity: 0.85;
+}
+
+.money { white-space: nowrap; font-weight: 500; }
+
+/* ══ Итог периода ═══════════════════════════════════════════════════════
+   Экран открывается не «карточкой баланса», а итоговой строкой — тем,
+   чем заканчивается чек. Отсюда двойная черта под суммой: в бумажной
+   отчётности она означает окончательный итог.                            */
 
 .hero {
-  position: relative;
-  overflow: hidden;
-  padding: 24px 22px;
-  border: none;
-  color: var(--invert-text);
-  background: linear-gradient(150deg, var(--invert-from), var(--invert-to));
-  box-shadow: var(--shadow-hero);
+  padding: 20px 18px 18px;
+  background: var(--slip);
+  border: 1px solid var(--rule);
 }
-
-/* Блик по диагонали — ровно настолько, чтобы поверхность не читалась
-   плоской заливкой. Виден на просвет, а не заявляет о себе. */
-.hero::before {
-  content: '';
-  position: absolute;
-  inset: -40% -20% auto -20%;
-  height: 180%;
-  background: radial-gradient(60% 50% at 22% 0%, rgba(255, 255, 255, 0.10), transparent 70%);
-  pointer-events: none;
-}
-.hero > * { position: relative; }
-
 .hero__label {
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--invert-muted);
-  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 10px;
 }
 .hero__value {
-  font-size: clamp(34px, 9vw, 46px);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1.05;
-  margin: 0;
+  font-size: clamp(32px, 8.5vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  margin: 0 0 14px;
+  padding-bottom: 14px;
+  /* Двойная черта итога. */
+  border-bottom: 3px double var(--rule-strong);
 }
-.hero__split {
-  display: flex;
-  gap: 0;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--invert-line);
+.hero__split { display: flex; flex-direction: column; gap: 0; }
+.hero__item {
+  display: flex; align-items: baseline;
+  padding: 7px 0;
 }
-.hero__item { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.hero__item + .hero__item { padding-left: 14px; border-left: 1px solid var(--invert-line); }
+.hero__item + .hero__item { border-top: 1px solid var(--rule); }
 .hero__item span {
-  font-size: 11.5px;
-  color: var(--invert-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 13px; color: var(--ink-2); flex: 0 0 auto;
 }
-.hero__item strong { font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
+.hero__item strong {
+  font-size: 15.5px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap;
+}
+/* Выноска между подписью и суммой в итоговом блоке. */
+.hero__item::before {
+  content: '';
+  flex: 1 1 auto;
+  order: 1;
+  margin: 0 10px 5px;
+  border-bottom: 1px dotted var(--rule-strong);
+  align-self: flex-end;
+}
+.hero__item strong { order: 2; }
 
-/* Смысловые цвета на тёмном нужно осветлить: те же, что на светлом фоне,
-   на графите теряют читаемость. */
-.hero .tone-income { color: #4ade8f; }
-.hero .tone-expense { color: #ff8087; }
-.hero .banner--offline { background: rgba(255, 255, 255, 0.10); color: #ffd48a; }
+.kpi { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; }
+.kpi__label {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.kpi__value { font-size: 21px; font-weight: 600; letter-spacing: -0.03em; }
 
-.kpi { display: flex; flex-direction: column; gap: 5px; padding: 14px; }
-.kpi__label { font-size: 12.5px; color: var(--text-muted); }
-.kpi__value { font-size: 21px; font-weight: 660; letter-spacing: -0.02em; }
+.tone-expense { color: var(--minus); }
+.tone-income  { color: var(--plus); }
+.tone-muted   { color: var(--ink-2); }
 
-.tone-expense { color: var(--expense); }
-.tone-income  { color: var(--income); }
-.tone-muted   { color: var(--text-muted); }
+/* ══ Список операций ════════════════════════════════════════════════════
+   Читается как лента чека: день — секция, в конце секции итог дня.       */
 
-/* ── Список операций ────────────────────────────────────────────────── */
-
-.tx-day { font-size: 12.5px; font-weight: 600; color: var(--text-subtle); padding: 14px 4px 8px; }
-.tx-day span { float: right; font-weight: 550; }
+.tx-day {
+  display: flex; align-items: baseline;
+  font-family: var(--mono);
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 18px 2px 6px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 2px;
+}
+.tx-day span { margin-left: auto; letter-spacing: 0; text-transform: none; font-size: 12px; }
 
 .tx {
   display: flex; align-items: center; gap: 12px;
-  width: 100%; padding: 11px 12px; border-radius: 12px;
-  text-align: left; transition: background .12s;
+  width: 100%; padding: 9px 8px; border-radius: var(--radius-sm);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease-soft);
 }
-.tx:hover { background: var(--surface-hover); }
-.tx__body { flex: 1; min-width: 0; }
-.tx__title { font-size: 14.5px; font-weight: 550; display: block; }
+.tx__body { flex: 0 1 auto; min-width: 0; }
+.tx__title { font-size: 14.5px; font-weight: 500; display: block; letter-spacing: -0.01em; }
 .tx__sub {
-  font-size: 12.5px; color: var(--text-muted);
+  font-size: 12px; color: var(--ink-2);
   display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.tx__amount { font-size: 15px; font-weight: 620; white-space: nowrap; letter-spacing: -0.01em; }
-.tx__orig { display: block; font-size: 11.5px; color: var(--text-subtle); font-weight: 500; text-align: right; }
-.tx.is-pending { opacity: 0.55; }
-.tx.is-highlighted { animation: flash 1.6s ease-out; }
+.tx__amount { font-size: 14.5px; font-weight: 500; white-space: nowrap; }
+.tx__orig {
+  display: block; font-size: 10.5px; color: var(--ink-3);
+  text-align: right; font-family: var(--mono); letter-spacing: 0;
+}
+.tx.is-pending { opacity: 0.5; }
 
-@keyframes flash {
-  0%, 30% { background: var(--accent-soft); }
-  100% { background: transparent; }
+/* Строка, изменённая другим участником, помечается на полях — так же,
+   как отмечают правку в тетради, а не заливкой всей строки. */
+.tx.is-highlighted { animation: marked 2s var(--ease-soft); }
+@keyframes marked {
+  0%, 55% { box-shadow: inset 3px 0 0 var(--pen); background: var(--pen-soft); }
+  100%    { box-shadow: inset 3px 0 0 transparent; background: transparent; }
 }
 
-/* ── Прогресс лимитов ───────────────────────────────────────────────── */
+/* ══ Лимиты ═════════════════════════════════════════════════════════════ */
 
-.progress { height: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
-.progress__fill { height: 100%; border-radius: 99px; transition: width .35s ease; }
-.progress--ok   .progress__fill { background: var(--income); }
-.progress--warn .progress__fill { background: var(--warning); }
-.progress--over .progress__fill { background: var(--expense); }
+.progress {
+  height: 6px; border-radius: 2px; background: var(--slip-2);
+  overflow: hidden; border: 1px solid var(--rule);
+}
+.progress__fill {
+  height: 100%;
+  transition: width var(--dur-chart) var(--ease), background var(--dur) var(--ease-soft);
+}
+.progress--ok   .progress__fill { background: var(--plus); }
+.progress--warn .progress__fill { background: var(--flag); }
+.progress--over .progress__fill { background: var(--minus); }
 
-.limit { display: flex; flex-direction: column; gap: 7px; padding: 12px 4px; }
+.limit { display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; }
+.limit + .limit { border-top: 1px solid var(--rule); }
 .limit__top { display: flex; align-items: center; gap: 10px; }
-.limit__name { flex: 1; font-size: 14px; font-weight: 550; }
-.limit__nums { font-size: 12.5px; color: var(--text-muted); display: flex; justify-content: space-between; }
+.limit__name { font-size: 14px; font-weight: 500; }
+.limit__nums {
+  font-family: var(--mono);
+  font-size: 11.5px; color: var(--ink-2);
+  display: flex; justify-content: space-between; gap: 12px;
+}
 
-/* ── Кнопки ─────────────────────────────────────────────────────────── */
+/* ══ Кнопки ═════════════════════════════════════════════════════════════ */
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  border-radius: 11px; font-weight: 560; white-space: nowrap;
-  transition: background .12s, opacity .12s, transform .08s;
+  border-radius: var(--radius-sm);
+  font-weight: 500; white-space: nowrap;
   border: 1px solid transparent;
+  transition: background var(--dur-fast) var(--ease-soft),
+              border-color var(--dur-fast) var(--ease-soft),
+              transform var(--dur-tap) var(--ease-soft);
 }
-.btn:active:not(:disabled) { transform: scale(0.985); }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: scale(0.975); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn--sm { padding: 6px 11px; font-size: 13px; }
-.btn--md { padding: 9px 15px; font-size: 14.5px; }
-.btn--lg { padding: 13px 20px; font-size: 16px; border-radius: 13px; }
+.btn--md { padding: 9px 14px; font-size: 14px; }
+.btn--lg { padding: 13px 20px; font-size: 15.5px; }
 .btn--full { width: 100%; }
 .btn--icon { padding: 8px; }
-.btn--primary { background: var(--accent); color: #fff; }
-.btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
-.btn--secondary { background: var(--surface-2); color: var(--text); border-color: var(--border); }
-.btn--secondary:hover:not(:disabled) { background: var(--surface-hover); }
-.btn--ghost { color: var(--text-muted); }
-.btn--ghost:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
-.btn--danger { background: var(--expense-soft); color: var(--expense); }
+.btn--primary { background: var(--pen); color: var(--on-pen); }
+.btn--primary:hover:not(:disabled) { background: var(--pen-hover); }
+.btn--secondary { background: var(--slip); color: var(--ink); border-color: var(--rule-strong); }
+.btn--secondary:hover:not(:disabled) { background: var(--slip-2); }
+.btn--ghost { color: var(--ink-2); }
+.btn--ghost:hover:not(:disabled) { background: var(--slip-2); color: var(--ink); }
+.btn--danger { background: var(--minus-soft); color: var(--minus); }
 
-/* ── Формы ──────────────────────────────────────────────────────────── */
+/* ══ Формы ══════════════════════════════════════════════════════════════
+   Поле — строка, на которой пишут: подчёркивание вместо рамки со всех
+   сторон. Рамка появляется в фокусе, когда поле действительно активно.   */
 
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field__label { font-size: 13px; font-weight: 550; color: var(--text-muted); }
-.field__hint { font-size: 12px; color: var(--text-subtle); }
-.field__error { font-size: 12px; color: var(--expense); }
+.field__label {
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.field__hint { font-size: 12px; color: var(--ink-3); }
+.field__error { font-size: 12px; color: var(--minus); }
 
 .input, .select, .textarea {
-  width: 100%; padding: 11px 13px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  font-size: 15px;
-  transition: border-color .12s, background .12s;
+  width: 100%; padding: 10px 2px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--rule-strong);
+  border-radius: 0;
+  font-size: 15px; color: var(--ink);
+  transition: border-color var(--dur-fast) var(--ease-soft);
 }
 .input:focus, .select:focus, .textarea:focus {
-  outline: none; border-color: var(--accent); background: var(--surface);
+  outline: none; border-bottom-color: var(--pen); border-bottom-width: 2px;
+  padding-bottom: 9px;
 }
-.textarea { resize: vertical; min-height: 68px; }
-.select { appearance: none; background-image: none; }
+.input::placeholder { color: var(--ink-3); }
+.textarea { resize: vertical; min-height: 64px; }
+.select { appearance: none; }
+.search .input { padding-left: 26px; }
+.search > svg { left: 2px; }
 
 .segmented {
-  display: flex; gap: 3px; padding: 3px;
-  background: var(--surface-2); border-radius: 12px; border: 1px solid var(--border);
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--rule);
 }
 .segmented__item {
-  flex: 1; padding: 9px 12px; border-radius: 9px;
-  font-size: 14px; font-weight: 560; color: var(--text-muted);
-  transition: background .14s, color .14s;
+  flex: 1; padding: 9px 10px;
+  font-size: 13.5px; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--ink-3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--dur-fast) var(--ease-soft),
+              border-color var(--dur-fast) var(--ease-soft);
 }
-.segmented__item.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-card); }
-.segmented__item.is-active.tone-expense { color: var(--expense); }
-.segmented__item.is-active.tone-income { color: var(--income); }
+.segmented__item.is-active { color: var(--ink); border-bottom-color: var(--ink); }
+.segmented__item.is-active.tone-expense { color: var(--minus); border-bottom-color: var(--minus); }
+.segmented__item.is-active.tone-income { color: var(--plus); border-bottom-color: var(--plus); }
 
-/* ── Ввод суммы ─────────────────────────────────────────────────────── */
+/* ── Ввод суммы ─────────────────────────────────────────────────────────
+   Главный элемент формы. Сумма набирается моноширинным и подчёркнута —
+   как графа, которую заполняют.                                          */
 
 .amount-input {
-  display: flex; align-items: baseline; justify-content: center; gap: 6px;
-  padding: 18px 0 14px;
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+  padding: 22px 0 16px;
+  border-bottom: 3px double var(--rule-strong);
+  margin-bottom: 6px;
 }
 .amount-input input {
   width: 100%; text-align: center; border: none; background: transparent;
-  font-size: clamp(38px, 12vw, 52px); font-weight: 700; letter-spacing: -0.03em;
+  font-family: var(--mono);
+  font-size: clamp(36px, 11vw, 48px); font-weight: 500; letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
 .amount-input input:focus { outline: none; }
-.amount-input__cur { font-size: 22px; font-weight: 600; color: var(--text-muted); }
+.amount-input input::placeholder { color: var(--rule-strong); }
+.amount-input__cur { font-size: 20px; font-weight: 500; color: var(--ink-3); }
 
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 12px; border-radius: 999px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  font-size: 13.5px; font-weight: 520;
-  transition: border-color .12s, background .12s;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 11px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--rule);
+  font-size: 13px; font-weight: 500; color: var(--ink-2);
+  transition: border-color var(--dur-fast) var(--ease-soft),
+              background var(--dur-fast) var(--ease-soft),
+              color var(--dur-fast) var(--ease-soft),
+              transform var(--dur-tap) var(--ease-soft);
 }
-.chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.chip:hover { border-color: var(--rule-strong); color: var(--ink); }
+.chip.is-active { border-color: var(--pen); background: var(--pen-soft); color: var(--pen); }
+.chip:active { transform: scale(0.96); }
 
-/* ── Sheet / модальное окно ─────────────────────────────────────────── */
+/* ══ Панель снизу ═══════════════════════════════════════════════════════ */
 
 .sheet__backdrop {
   position: fixed; inset: 0; z-index: 60;
-  background: rgba(9, 12, 18, 0.45);
+  background: color-mix(in srgb, var(--ink) 42%, transparent);
   display: flex; align-items: flex-end; justify-content: center;
-  animation: fade .16s ease-out;
+  animation: fade var(--dur-fast) var(--ease-soft);
 }
 @keyframes fade { from { opacity: 0; } }
-@keyframes rise { from { transform: translateY(14px); opacity: 0; } }
+@keyframes rise { from { transform: translateY(16px); opacity: 0; } }
 
 .sheet {
-  width: 100%; max-width: 560px; max-height: 92vh;
+  width: 100%; max-width: 540px; max-height: 92vh;
   display: flex; flex-direction: column;
-  background: var(--surface);
+  background: var(--slip);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   box-shadow: var(--shadow-pop);
-  animation: rise .2s cubic-bezier(.2,.9,.3,1);
+  animation: rise var(--dur) var(--ease);
   padding-bottom: var(--safe-b);
 }
-.sheet--wide { max-width: 760px; }
-.sheet__head { position: relative; padding: 14px 52px 10px; text-align: center; }
-.sheet__grip {
-  width: 38px; height: 4px; border-radius: 99px; background: var(--border-strong);
-  margin: 0 auto 10px;
+.sheet--wide { max-width: 740px; }
+.sheet__head {
+  position: relative; padding: 16px 52px 12px; text-align: center;
+  border-bottom: 1px solid var(--rule);
 }
-.sheet__title { margin: 0; font-size: 16px; font-weight: 640; }
+.sheet__grip {
+  width: 34px; height: 3px; border-radius: 2px; background: var(--rule-strong);
+  margin: 0 auto 12px;
+}
+.sheet__title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-2);
+}
 .sheet__close {
   position: absolute; right: 12px; top: 12px;
-  width: 34px; height: 34px; border-radius: 50%;
-  display: grid; place-items: center; color: var(--text-muted); background: var(--surface-2);
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  display: grid; place-items: center; color: var(--ink-3);
+  transition: background var(--dur-fast) var(--ease-soft), color var(--dur-fast) var(--ease-soft);
 }
-.sheet__body { overflow-y: auto; padding: 6px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
-.sheet__foot { padding: 12px 18px 16px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+.sheet__close:hover { background: var(--slip-2); color: var(--ink); }
+.sheet__body { overflow-y: auto; padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 16px; }
+.sheet__foot { padding: 12px 18px 16px; border-top: 1px solid var(--rule); display: flex; gap: 10px; }
 
 @media (min-width: 700px) {
   .sheet__backdrop { align-items: center; }
@@ -365,274 +470,208 @@
   .sheet__grip { display: none; }
 }
 
-/* ── Служебные состояния ────────────────────────────────────────────── */
+/* ══ Служебные состояния ════════════════════════════════════════════════ */
 
-.empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 34px 18px; text-align: center; }
-.empty__icon {
-  width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center;
-  background: var(--surface-2); color: var(--text-subtle);
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 36px 18px; text-align: center;
 }
-.empty__title { margin: 4px 0 0; font-size: 15px; font-weight: 600; }
-.empty__text { margin: 0 0 6px; font-size: 13.5px; color: var(--text-muted); max-width: 320px; }
+.empty__icon {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  display: grid; place-items: center;
+  border: 1px dashed var(--rule-strong); color: var(--ink-3);
+}
+.empty__title { margin: 6px 0 0; font-size: 15px; font-weight: 600; }
+.empty__text { margin: 0 0 8px; font-size: 13.5px; color: var(--ink-2); max-width: 300px; line-height: 1.5; }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-hover) 50%, var(--surface-2) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.3s infinite;
+  background: var(--slip-2);
+  animation: pulse 1.4s var(--ease-soft) infinite;
 }
-@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes pulse { 50% { opacity: 0.5; } }
 
-.cat-dot { display: inline-grid; place-items: center; border-radius: 12px; flex: none; }
+.cat-dot { display: inline-grid; place-items: center; border-radius: var(--radius-sm); flex: none; }
 
 .banner {
   display: flex; align-items: center; gap: 9px;
-  padding: 9px 13px; border-radius: 11px;
-  font-size: 13.5px; font-weight: 520;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  border: 1px solid;
 }
-.banner--offline { background: var(--warning-soft); color: var(--warning); }
-.banner--error { background: var(--expense-soft); color: var(--expense); }
+.banner--offline { background: var(--flag-soft); color: var(--flag); border-color: color-mix(in srgb, var(--flag) 30%, transparent); }
+.banner--error { background: var(--minus-soft); color: var(--minus); border-color: color-mix(in srgb, var(--minus) 30%, transparent); }
 
 .toasts {
   position: fixed; z-index: 70; left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--nav-h) + var(--safe-b) + 84px);
-  display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100vw - 32px));
+  bottom: calc(var(--nav-h) + var(--safe-b) + 88px);
+  display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 32px));
 }
 @media (min-width: 900px) { .toasts { bottom: 24px; left: auto; right: 24px; transform: none; } }
 .toast {
   display: flex; align-items: center; gap: 10px;
-  padding: 11px 14px; border-radius: 12px;
-  background: var(--surface); border: 1px solid var(--border);
-  box-shadow: var(--shadow-pop); font-size: 13.5px;
-  animation: rise .18s ease-out;
+  padding: 11px 13px; border-radius: var(--radius-sm);
+  background: var(--slip); border: 1px solid var(--rule-strong);
+  box-shadow: var(--shadow-pop); font-size: 13px;
+  animation: rise var(--dur) var(--ease);
 }
-.toast--error { border-color: var(--expense); color: var(--expense); }
-.toast--success { border-color: var(--income); color: var(--income); }
+.toast--error { border-color: var(--minus); color: var(--minus); }
+.toast--success { border-color: var(--plus); color: var(--plus); }
 
-/* ── Графики ────────────────────────────────────────────────────────── */
+.list-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 2px; border-bottom: 1px solid var(--rule);
+  transition: background var(--dur-fast) var(--ease-soft);
+}
+.list-row:last-child { border-bottom: none; }
+.list-row__body { flex: 0 1 auto; min-width: 0; }
+.list-row__title { font-size: 14px; font-weight: 500; }
+.list-row__sub { font-size: 12px; color: var(--ink-2); }
+
+.badge {
+  padding: 3px 8px; border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--slip-2); color: var(--ink-2); border: 1px solid var(--rule);
+}
+.badge--owner { background: var(--pen-soft); color: var(--pen); border-color: color-mix(in srgb, var(--pen) 26%, transparent); }
+.badge--editor { background: var(--plus-soft); color: var(--plus); border-color: color-mix(in srgb, var(--plus) 26%, transparent); }
+
+.code-box {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px; border-radius: var(--radius-sm);
+  background: var(--slip-2); border: 1px dashed var(--rule-strong);
+  font-family: var(--mono);
+  font-size: 16px; font-weight: 500; letter-spacing: 0.1em;
+}
+
+.conflict-option {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--rule); background: var(--slip-2); text-align: left; width: 100%;
+  transition: border-color var(--dur-fast) var(--ease-soft);
+}
+.conflict-option:hover { border-color: var(--pen); }
+.conflict-option span {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+}
+.conflict-option strong {
+  font-family: var(--mono);
+  font-size: 20px; font-weight: 500; letter-spacing: -0.03em;
+}
+
+.search { position: relative; }
+.search > svg {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  color: var(--ink-3); pointer-events: none;
+}
+
+/* ══ Графики ════════════════════════════════════════════════════════════ */
 
 .donut { display: grid; place-items: center; }
-.donut__value { font-size: 19px; font-weight: 680; fill: var(--text); }
-.donut__label { font-size: 11.5px; fill: var(--text-muted); }
+.donut__value { font-family: var(--mono); font-size: 17px; font-weight: 500; fill: var(--ink); }
+.donut__label {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; fill: var(--ink-3);
+}
 
-.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.legend__row { display: flex; align-items: center; gap: 9px; padding: 7px 2px; font-size: 13.5px; }
-.legend__swatch { width: 9px; height: 9px; border-radius: 3px; flex: none; }
-.legend__label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.legend__pct { color: var(--text-subtle); font-size: 12.5px; min-width: 34px; text-align: right; }
-.legend__value { font-weight: 570; min-width: 88px; text-align: right; }
+/* Легенда — та же денежная колонка с выноской. */
+.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.legend__row {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 0; font-size: 13.5px;
+}
+.legend__swatch { width: 8px; height: 8px; border-radius: 1px; flex: none; align-self: center; }
+.legend__label { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend__pct {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  min-width: 32px; text-align: right; order: 3;
+}
+.legend__value {
+  font-family: var(--mono); font-weight: 500; min-width: 86px; text-align: right; order: 4;
+}
+.legend__row::after {
+  content: ''; flex: 1 1 auto; order: 2;
+  margin: 0 8px 5px; border-bottom: 1px dotted var(--rule-strong); align-self: flex-end;
+}
 
-.bars__plot { position: relative; display: flex; align-items: flex-end; gap: 0; }
-.bars__grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); opacity: .6; }
+.bars__plot { position: relative; display: flex; align-items: flex-end; }
+.bars__grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--rule); }
 .bars__group { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
-.bars__pair { display: flex; align-items: flex-end; gap: 3px; height: 100%; width: 100%; justify-content: center; }
+.bars__pair { display: flex; align-items: flex-end; gap: 2px; height: 100%; width: 100%; justify-content: center; }
 .bars__bar {
-  width: 34%; max-width: 16px; border-radius: 4px 4px 0 0; min-height: 2px;
-  /* height — то, что и растёт при появлении; без него столбцы
-     появлялись бы скачком. */
+  width: 34%; max-width: 14px; min-height: 2px; border-radius: 1px;
   transition: height var(--dur-chart) var(--ease), opacity var(--dur-fast) var(--ease-soft);
 }
-.bars__bar--income { background: var(--income); }
-.bars__bar--expense { background: var(--expense); }
+.bars__bar--income { background: var(--plus); }
+.bars__bar--expense { background: var(--minus); }
 .bars__tip {
   position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
   display: flex; flex-direction: column; gap: 2px; white-space: nowrap;
-  padding: 8px 11px; border-radius: 10px; font-size: 12px;
-  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-pop); z-index: 5;
+  padding: 8px 10px; border-radius: var(--radius-sm); font-size: 11.5px;
+  background: var(--slip); border: 1px solid var(--rule-strong);
+  box-shadow: var(--shadow-pop); z-index: 5;
 }
 .bars__axis { display: flex; margin-top: 8px; }
-.bars__axis span { text-align: center; font-size: 11px; color: var(--text-subtle); }
+.bars__axis span {
+  text-align: center;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-3);
+}
 
 .area { position: relative; }
 .area__tip {
   position: absolute; top: 0; right: 0;
   display: flex; flex-direction: column; align-items: flex-end;
-  font-size: 12px; color: var(--text-muted);
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
 }
-.area__tip strong { color: var(--text); font-size: 13px; }
+.area__tip strong { color: var(--ink); font-size: 13px; font-weight: 500; }
 
-/* ── Экран входа ────────────────────────────────────────────────────── */
+/* ══ Вход ═══════════════════════════════════════════════════════════════ */
 
-.auth {
-  min-height: 100dvh; display: grid; place-items: center; padding: 24px;
-  background:
-    radial-gradient(900px 420px at 12% -8%, color-mix(in srgb, var(--accent) 14%, transparent), transparent),
-    var(--bg);
-}
-.auth__box { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 16px; }
-.auth__brand { display: flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-.auth__lead { margin: 0; color: var(--text-muted); font-size: 14.5px; line-height: 1.5; }
-
-.list-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 4px; border-bottom: 1px solid var(--border);
-}
-.list-row:last-child { border-bottom: none; }
-.list-row__body { flex: 1; min-width: 0; }
-.list-row__title { font-size: 14.5px; font-weight: 550; }
-.list-row__sub { font-size: 12.5px; color: var(--text-muted); }
-
-.badge {
-  padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
-  background: var(--surface-2); color: var(--text-muted);
-}
-.badge--owner { background: var(--accent-soft); color: var(--accent); }
-.badge--editor { background: var(--income-soft); color: var(--income); }
-
-.code-box {
+.auth { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.auth__box { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 18px; }
+.auth__brand {
   display: flex; align-items: center; gap: 10px;
-  padding: 13px 15px; border-radius: 12px;
-  background: var(--surface-2); border: 1px dashed var(--border-strong);
-  font-size: 17px; font-weight: 650; letter-spacing: 0.06em;
+  font-size: 19px; font-weight: 700; letter-spacing: -0.03em;
 }
+.auth__lead { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
 
-.conflict-option {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 13px 15px; border-radius: 12px; border: 1px solid var(--border);
-  background: var(--surface-2); text-align: left; width: 100%;
-}
-.conflict-option:hover { border-color: var(--accent); }
-.conflict-option span { font-size: 12.5px; color: var(--text-muted); }
-.conflict-option strong { font-size: 20px; font-weight: 680; letter-spacing: -0.02em; }
-
-.search { position: relative; }
-.search > svg {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  color: var(--text-subtle); pointer-events: none;
-}
-.search .input { padding-left: 38px; }
-
-/* ══ Движение ═══════════════════════════════════════════════════════════
-   Правило одно: анимируется только то, что что-то сообщает. Появление
-   элемента, изменение величины, отклик на касание. Ничего не движется
-   само по себе, ничего не отскакивает — в приложении про деньги
-   игривость читается как ненадёжность.                                   */
-
-@keyframes enter-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
-}
-
-@keyframes enter-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-/* ── Появление экрана ────────────────────────────────────────────────────
-   Карточки выходят каскадом сверху вниз — так взгляд ведут по порядку
-   чтения, а не вываливают всё сразу. Задержки заданы вручную и только
-   на первые семь: дальше пользователь уже смотрит на конкретный блок,
-   и продолжение каскада превратилось бы в ожидание.                       */
-
-.shell__main > .stack > * {
-  animation: enter-up var(--dur-slow) var(--ease) both;
-}
-.shell__main > .stack > *:nth-child(1) { animation-delay: 0ms; }
-.shell__main > .stack > *:nth-child(2) { animation-delay: 45ms; }
-.shell__main > .stack > *:nth-child(3) { animation-delay: 90ms; }
-.shell__main > .stack > *:nth-child(4) { animation-delay: 130ms; }
-.shell__main > .stack > *:nth-child(5) { animation-delay: 165ms; }
-.shell__main > .stack > *:nth-child(6) { animation-delay: 195ms; }
-.shell__main > .stack > *:nth-child(n + 7) { animation-delay: 220ms; }
-
-/* ── Список операций ─────────────────────────────────────────────────────
-   Строки появляются очень быстрым каскадом: заметно как «список
-   разворачивается», но не превращается в ожидание. Больше десяти строк
-   задержку не получают — иначе низ длинного списка ждал бы секунду.       */
-
-.tx {
-  animation: enter-fade var(--dur) var(--ease-soft) both;
-  transition: background var(--dur-fast) var(--ease-soft),
-              transform var(--dur-tap) var(--ease-soft);
-}
-.tx:nth-child(2)  { animation-delay: 20ms; }
-.tx:nth-child(3)  { animation-delay: 40ms; }
-.tx:nth-child(4)  { animation-delay: 60ms; }
-.tx:nth-child(5)  { animation-delay: 80ms; }
-.tx:nth-child(6)  { animation-delay: 100ms; }
-.tx:nth-child(7)  { animation-delay: 115ms; }
-.tx:nth-child(8)  { animation-delay: 130ms; }
-.tx:nth-child(n + 9) { animation-delay: 145ms; }
-.tx:active { transform: scale(0.995); }
-
-/* ── Отклик на касание ───────────────────────────────────────────────────
-   Короткий и заметный: на телефоне это единственное подтверждение того,
-   что нажатие вообще засчитано.                                           */
-
-.chip, .segmented__item, .list-row, .sidebar__item, .tabbar__item {
-  transition: background var(--dur-fast) var(--ease-soft),
-              color var(--dur-fast) var(--ease-soft),
-              border-color var(--dur-fast) var(--ease-soft),
-              transform var(--dur-tap) var(--ease-soft);
-}
-.chip:active, .btn:active:not(:disabled) { transform: scale(0.96); }
-.tabbar__item:active { transform: scale(0.92); }
-
-/* Активная вкладка получает подсветку под иконкой — цветом одной иконки
-   состояние читается хуже, особенно на маленьком экране. */
-.tabbar__item { position: relative; }
-.tabbar__item::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  width: 34px;
-  height: 26px;
-  border-radius: 9px;
-  background: var(--accent-soft);
-  opacity: 0;
-  transform: scale(0.7);
-  transition: opacity var(--dur-fast) var(--ease-soft),
-              transform var(--dur-fast) var(--ease);
-}
-.tabbar__item.is-active::after { opacity: 1; transform: none; }
-.tabbar__item > svg, .tabbar__item { z-index: 0; }
-.tabbar__item > * { position: relative; z-index: 1; }
-
-/* ── Плавающая кнопка ────────────────────────────────────────────────────
-   Главное действие приложения. Появляется с небольшой задержкой после
-   экрана — так она читается как отдельный слой, а не часть содержимого.   */
-
-.fab {
-  animation: fab-in 420ms var(--ease) 260ms both;
-  transition: transform var(--dur-tap) var(--ease-soft),
-              box-shadow var(--dur) var(--ease-soft);
-}
-@keyframes fab-in {
-  from { opacity: 0; transform: scale(0.6) translateY(12px); }
-  to   { opacity: 1; transform: none; }
-}
-.fab:active { transform: scale(0.9); }
-.fab:hover { box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 52%, transparent); }
-
-/* ── Прогресс ────────────────────────────────────────────────────────────
-   Заполнение показывает величину и её изменение: при добавлении расхода
-   полоса доезжает, а не перескакивает.                                    */
-
-.progress__fill {
-  transition: width var(--dur-chart) var(--ease),
-              background var(--dur) var(--ease-soft);
-}
-
-/* ── Карточки под курсором ───────────────────────────────────────────────
-   Только на устройствах с настоящим курсором: на тач-экране :hover
-   залипает после касания и выглядит как поломка.                          */
+/* ══ Курсор ═════════════════════════════════════════════════════════════
+   Отклик на наведение — только там, где курсор настоящий: на тач-экране
+   :hover залипает после касания и выглядит поломкой.                     */
 
 @media (hover: hover) and (pointer: fine) {
-  .card:hover { box-shadow: var(--shadow-lift); border-color: var(--border-strong); }
-  .hero:hover { box-shadow: var(--shadow-hero); }
-  .tx:hover { background: var(--surface-hover); }
-  .legend__row { transition: background var(--dur-fast) var(--ease-soft); border-radius: 8px; }
-  .legend__row:hover { background: var(--surface-2); }
+  .card:hover { border-color: var(--rule-strong); }
+  .tx:hover { background: var(--slip-2); }
+  .list-row:hover { background: var(--slip-2); }
+  .fab:hover { box-shadow: 0 6px 20px color-mix(in srgb, var(--pen) 44%, transparent); }
 }
 
-/* ── Скелетоны ───────────────────────────────────────────────────────────
-   Мягче прежнего: резкий бегущий блик сам по себе притягивает внимание
-   к тому, чего ещё нет.                                                    */
+/* ══ Движение ═══════════════════════════════════════════════════════════
+   Движения намеренно мало. Анимируются три вещи, и каждая что-то сообщает:
+   сумма, которая изменилась; график, который строится; отклик на касание.
+   Каскадных появлений нет — они ничего не сообщают и делают интерфейс
+   похожим на демонстрацию самого себя.                                   */
 
-.skeleton { animation: shimmer 1.6s var(--ease-soft) infinite; }
-
-/* ── Уважение к системной настройке ──────────────────────────────────────
-   Отключается всё: и переходы, и появления, и бегущий блик. Значения
-   при этом остаются конечными — интерфейс просто оказывается собранным.   */
+/* Выноска прочерчивается — единственный поставленный момент в интерфейсе.
+   Он приходится на фирменный приём и читается как «строку вписывают
+   в тетрадь». Ключ строки — идентификатор операции, поэтому при обновлении
+   данных прочерчиваются только НОВЫЕ строки, а не весь список заново:
+   движение отмечает появление, а не сопровождает перерисовку. */
+@keyframes draw-leader {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.leader {
+  transform-origin: left center;
+  /* Без fill-mode и без задержек — намеренно. Анимации не идут в фоновой
+     вкладке, и при `both` выноска осталась бы схлопнутой: покой должен быть
+     нормальным состоянием, а анимация — тем, что случается поверх него.
+     Задержки убраны заодно: со ступенчатым запуском при остановленных
+     анимациях строки моргали бы полной шириной перед схлопыванием. */
+  animation: draw-leader 280ms var(--ease);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

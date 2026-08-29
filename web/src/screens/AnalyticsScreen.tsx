@@ -167,7 +167,8 @@ export function AnalyticsScreen({ period }: { period: string }) {
                 <div className="list-row__title">{item.label}</div>
                 <div className="list-row__sub">{formatShortDate(item.day)}</div>
               </div>
-              <span className="tnum" style={{ fontWeight: 600 }}>{formatMoney(item.amount, base)}</span>
+              <span className="leader" aria-hidden="true" />
+              <span className="money" style={{ fontWeight: 600 }}>{formatMoney(item.amount, base)}</span>
             </div>
           ))
         )}
