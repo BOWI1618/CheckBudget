@@ -66,20 +66,21 @@ export function TransactionList({
                 >
                   {tx.type === 'transfer'
                     ? <CategoryDot color="#64748b" icon="arrows" />
-                    : <CategoryDot color={category?.color ?? '#64748b'} icon={category?.icon ?? 'tag'} />}
+                    : <CategoryDot color={category?.color ?? 'var(--cat-slate)'} icon={category?.icon ?? 'tag'} />}
 
                   <span className="tx__body">
                     <span className="tx__title">{title}</span>
                     {sub && <span className="tx__sub">{sub}</span>}
                   </span>
 
-                  {/* Пунктирная выноска от подписи к сумме — приём чека,
-                      которым связаны все списки приложения. */}
-                  <span className="leader" aria-hidden="true" />
-
                   <span>
+                    {/* Расход набран основным тоном, а не красным: в приложении
+                        для контроля расходов красной была бы почти каждая строка,
+                        и цвет перестал бы что-либо сообщать. Знак «−» отличает
+                        расход не хуже, а красный остаётся за превышением лимита
+                        и минусом на счёте. */}
                     <span className={`tx__amount money ${
-                      tx.type === 'income' ? 'tone-income' : tx.type === 'expense' ? 'tone-expense' : 'tone-muted'
+                      tx.type === 'income' ? 'tone-income' : tx.type === 'transfer' ? 'tone-muted' : ''
                     }`}>
                       {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
                       {formatMoney(tx.amountMinor, tx.currency)}

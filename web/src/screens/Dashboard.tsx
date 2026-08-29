@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { countOf, formatMoney } from '@checkbudget/shared';
 import type { Transaction } from '@checkbudget/shared';
 import { useApp, useLookups } from '../data/hooks.js';
-import { Card, CardTitle, EmptyState, Button, ProgressBar, Skeleton } from '../components/ui.js';
+import { Card, CardTitle, CategoryDot, EmptyState, Button, ProgressBar, Skeleton } from '../components/ui.js';
 import { Donut, Legend, GroupedBars, type Slice } from '../components/charts.js';
 import { TransactionList } from '../components/TransactionList.js';
 import { AnimatedNumber } from '../components/AnimatedNumber.js';
@@ -53,7 +53,7 @@ export function Dashboard({
     const slices: Slice[] = [...byRoot.entries()]
       .map(([id, value]) => {
         const category = categoryById.get(id);
-        return { id, value, label: category?.name ?? 'Прочее', color: category?.color ?? '#64748b' };
+        return { id, value, label: category?.name ?? 'Прочее', color: category?.color ?? 'var(--cat-slate)' };
       })
       .sort((a, b) => b.value - a.value);
 
@@ -61,7 +61,7 @@ export function Dashboard({
     const rest = slices.slice(5);
     if (rest.length > 0) {
       top.push({
-        id: 'rest', label: 'Остальное', color: '#94a3b8',
+        id: 'rest', label: 'Остальное', color: 'var(--cat-slate)',
         value: rest.reduce((s, x) => s + x.value, 0),
       });
     }
@@ -117,22 +117,25 @@ export function Dashboard({
         <p className="hero__value">
           <AnimatedNumber value={stats.balance} currency={base} />
         </p>
+        {/* Три показателя в ряд: доход и расход сравниваются взглядом,
+            а не чтением двух строк подряд. Подписи короткие — период уже
+            назван в шапке экрана, повторять его в колонке незачем. */}
         <div className="hero__split">
           <div className="hero__item">
-            <span>Доходы за {formatPeriod(period).toLowerCase()}</span>
+            <span>Доход</span>
             <strong className="tone-income">
               <AnimatedNumber value={stats.income} currency={base} />
             </strong>
           </div>
           <div className="hero__item">
-            <span>Расходы</span>
-            <strong className="tone-expense">
+            <span>Расход</span>
+            <strong>
               <AnimatedNumber value={stats.expense} currency={base} />
             </strong>
           </div>
           <div className="hero__item">
             <span>Разница</span>
-            <strong>
+            <strong className={stats.income >= stats.expense ? 'tone-income' : 'tone-expense'}>
               <AnimatedNumber
                 value={stats.income - stats.expense}
                 currency={base}
@@ -162,18 +165,31 @@ export function Dashboard({
             value={(spentOnBudgeted / budgeted) * 100}
             tone={spentOnBudgeted > budgeted ? 'over' : spentOnBudgeted > budgeted * 0.8 ? 'warn' : 'ok'}
           />
+          {/* Остаток — то число, ради которого на шкалу и смотрят.
+              При превышении фраза меняется: «осталось −2 000» было бы
+              не ошибкой в счёте, а ошибкой в языке. */}
+          <p className="budget-rest">
+            {spentOnBudgeted > budgeted
+              ? <><strong className="tone-expense">{formatMoney(spentOnBudgeted - budgeted, base)}</strong> сверх бюджета</>
+              : <><strong className="tone-income">{formatMoney(budgeted - spentOnBudgeted, base)}</strong> осталось</>}
+          </p>
           {limits.map((limit) => {
             const category = categoryById.get(limit.categoryId);
             const pct = limit.limitMinor > 0 ? (limit.spentMinor / limit.limitMinor) * 100 : 0;
             return (
               <div className="limit" key={limit.id}>
                 <div className="limit__top">
+                  {/* Иконка категории — то, что отличает четыре бюджета друг
+                      от друга. Без неё карточка читалась как список полос,
+                      а не как четыре разные статьи расходов. */}
+                  <CategoryDot color={category?.color ?? 'var(--cat-slate)'} icon={category?.icon ?? 'tag'} size={28} />
                   <span className="limit__name">{category?.name ?? 'Категория'}</span>
                   <span className={`money ${pct > 100 ? 'tone-expense' : 'tone-muted'}`} style={{ fontSize: 'var(--t-small)' }}>
                     {Math.round(pct)}%
                   </span>
                 </div>
-                <ProgressBar value={pct} tone={pct > 100 ? 'over' : pct > 80 ? 'warn' : 'ok'} />
+                <ProgressBar value={pct} tone={pct > 100 ? 'over' : pct > 80 ? 'warn' : 'ok'}
+                             color={category?.color ?? 'var(--cat-slate)'} />
               </div>
             );
           })}
@@ -202,10 +218,10 @@ export function Dashboard({
           <GroupedBars points={stats.months} currency={base} />
           <div className="row" style={{ gap: 16, marginTop: 12, fontSize: 'var(--t-small)' }}>
             <span className="row" style={{ gap: 6 }}>
-              <span className="legend__swatch" style={{ background: 'var(--income)' }} /> доходы
+              <span className="legend__swatch" style={{ background: 'color-mix(in srgb, var(--plus) 34%, transparent)' }} /> доходы
             </span>
             <span className="row" style={{ gap: 6 }}>
-              <span className="legend__swatch" style={{ background: 'var(--expense)' }} /> расходы
+              <span className="legend__swatch" style={{ background: 'var(--accent)' }} /> расходы
             </span>
           </div>
         </Card>

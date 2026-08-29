@@ -57,7 +57,6 @@ export function AccountsScreen() {
                 <div className="list-row__title">{account.name}</div>
                 <div className="list-row__sub">{TYPES.find((t) => t.value === account.type)?.label}</div>
               </div>
-              <span className="leader" aria-hidden="true" />
               <span className={`money ${account.balanceMinor < 0 ? 'tone-expense' : ''}`}
                     style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
                 {formatMoney(account.balanceMinor, account.currency)}
@@ -81,7 +80,6 @@ export function AccountsScreen() {
               <div className="list-row__body">
                 <div className="list-row__title">{account.name}</div>
               </div>
-              <span className="leader" aria-hidden="true" />
               <span className="money" style={{ fontSize: 'var(--t-base)' }}>
                 {formatMoney(account.balanceMinor, account.currency)}
               </span>

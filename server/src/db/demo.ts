@@ -89,7 +89,7 @@ async function main(): Promise<void> {
                              color, icon, sort_order, created_at, updated_at, version)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,1)`,
       usdAccount, budgetId, 'Валютный счёт', 'savings', 'USD',
-      parseAmount('1200', 'USD'), '#12a594', 'savings', 2, ts, ts,
+      parseAmount('1200', 'USD'), '#12a2a0', 'savings', 2, ts, ts,
     );
 
     const accounts = await db.all<{ id: string; currency: string; name: string }>(
@@ -202,7 +202,7 @@ async function main(): Promise<void> {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,1)`,
       newId(), budgetId, 'Подушка безопасности',
       parseAmount('600000', 'RUB'), parseAmount('415000', 'RUB'), 'RUB', null,
-      'savings', '#12a594', ts, ts,
+      'savings', '#12a2a0', ts, ts,
     );
     await db.run(
       `INSERT INTO goals (id, budget_id, name, target_minor, saved_minor, currency, due_on,
@@ -210,7 +210,7 @@ async function main(): Promise<void> {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,1)`,
       newId(), budgetId, 'Отпуск летом',
       parseAmount('250000', 'RUB'), parseAmount('82000', 'RUB'), 'RUB', null,
-      'ticket', '#f5a524', ts, ts,
+      'ticket', '#e0940e', ts, ts,
     );
 
     // default_budget_id обновляется владельцем только себе — второму

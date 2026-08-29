@@ -8,7 +8,7 @@
 .shell__main {
   flex: 1;
   width: 100%;
-  padding: var(--s4) var(--s4) calc(var(--nav-h) + var(--safe-b) + 88px);
+  padding: var(--s4) var(--s4) calc(var(--nav-h) + var(--safe-b) + 92px);
   max-width: 760px;
   margin: 0 auto;
 }
@@ -19,26 +19,27 @@
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 10px;
   padding: 12px 16px;
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
-  backdrop-filter: saturate(150%) blur(10px);
-  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
 }
 .topbar__title {
-  font-size: var(--t-lead); font-weight: 600; letter-spacing: -0.01em; margin: 0;
+  font-size: var(--t-lead); font-weight: 700; letter-spacing: -0.02em; margin: 0;
 }
 .topbar__spacer { flex: 1; }
 
-/* Период — не «кнопка выбора», а надпись в шапке листа. */
+/* Период — таблетка, а не надпись: по ней действительно кликают. */
 .period-picker {
   display: inline-flex; align-items: center;
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  font-size: var(--t-base); font-weight: 600; letter-spacing: -0.01em;
-  transition: border-color var(--dur-fast) var(--ease-soft),
-              background var(--dur-fast) var(--ease-soft);
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--t-small); font-weight: 600; letter-spacing: -0.01em;
+  transition: box-shadow var(--dur-fast) var(--ease-soft),
+              transform var(--dur-tap) var(--ease-soft);
 }
-.period-picker:hover { border-color: var(--rule); background: var(--slip); }
+.period-picker:hover { box-shadow: var(--shadow-card); }
+.period-picker:active { transform: scale(0.97); }
 
 /* ── Нижняя навигация ───────────────────────────────────────────────── */
 
@@ -47,45 +48,45 @@
   display: grid; grid-template-columns: repeat(5, 1fr);
   height: calc(var(--nav-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
-  background: color-mix(in srgb, var(--slip) 94%, transparent);
-  backdrop-filter: saturate(150%) blur(14px);
-  border-top: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 -1px 0 var(--line), 0 -10px 30px -18px rgba(36, 29, 40, 0.28);
 }
 .tabbar__item {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   color: var(--ink-3);
-  /* Обычный шрифт, а не прописные моноширинные: навигация должна читаться
-     мгновенно, а капитель на 9 пикселях читается медленнее строчных. */
-  font-size: var(--t-micro); font-weight: 500; letter-spacing: 0.01em;
+  font-size: var(--t-micro); font-weight: 600; letter-spacing: 0.005em;
   transition: color var(--dur-fast) var(--ease-soft);
 }
-/* Активный раздел отмечен чертой сверху — как закладка на странице,
-   а не подсвеченной «таблеткой». */
+/* Активный раздел подсвечен мягкой таблеткой под иконкой: на цветном
+   интерфейсе она читается быстрее тонкой чёрточки. */
 .tabbar__item::before {
-  content: ''; position: absolute; top: 0;
-  width: 26px; height: 2px; background: var(--pen);
-  opacity: 0; transform: scaleX(0.3);
+  content: ''; position: absolute; top: 7px;
+  width: 44px; height: 28px; border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  opacity: 0; transform: scale(0.7);
   transition: opacity var(--dur-fast) var(--ease-soft),
-              transform var(--dur-fast) var(--ease);
+              transform var(--dur) var(--ease);
 }
-.tabbar__item { position: relative; }
-.tabbar__item.is-active { color: var(--pen); }
+.tabbar__item > * { position: relative; }
+.tabbar__item.is-active { color: var(--accent); }
 .tabbar__item.is-active::before { opacity: 1; transform: none; }
 
-/* Кнопка ввода расхода — единственный по-настоящему заметный элемент.
-   Квадрат со скруглением бумаги, а не круг: круглая кнопка «плюс» есть
-   в каждом втором приложении. */
+/* Кнопка ввода расхода — самый заметный элемент интерфейса, и единственный,
+   которому позволено светиться. */
 .fab {
   position: fixed; right: 18px; z-index: 31;
-  bottom: calc(var(--nav-h) + var(--safe-b) + 20px);
-  width: 56px; height: 56px; border-radius: 14px;
+  bottom: calc(var(--nav-h) + var(--safe-b) + 22px);
+  width: 58px; height: 58px; border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--pen); color: var(--on-pen);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--pen) 34%, transparent);
+  color: var(--on-accent);
+  background: linear-gradient(150deg, var(--accent-lift), var(--accent-hover));
+  box-shadow: var(--shadow-accent);
   transition: transform var(--dur-tap) var(--ease-soft),
               box-shadow var(--dur) var(--ease-soft);
 }
-.fab:active { transform: scale(0.93); }
+.fab:active { transform: scale(0.92); }
 
 /* ── Сайдбар ────────────────────────────────────────────────────────── */
 
@@ -96,58 +97,57 @@
   .shell { flex-direction: row; }
 
   .sidebar {
-    display: flex; flex-direction: column; gap: 2px;
-    width: 232px; flex: 0 0 232px;
-    padding: 18px 12px;
-    border-right: 1px solid var(--rule);
-    background: color-mix(in srgb, var(--slip) 70%, transparent);
+    display: flex; flex-direction: column; gap: 3px;
+    width: 244px; flex: 0 0 244px;
+    padding: 20px 14px;
     position: sticky; top: 0; height: 100vh;
   }
   .sidebar__brand {
-    display: flex; align-items: center; gap: 9px;
-    padding: 4px 10px 18px;
-    font-weight: 700; font-size: var(--t-base); letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 10px 20px;
+    font-weight: 800; font-size: var(--t-lead); letter-spacing: -0.03em;
   }
   .sidebar__item {
-    display: flex; align-items: center; gap: 11px;
-    padding: 8px 10px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: var(--r-sm);
     color: var(--ink-2); font-size: var(--t-base); font-weight: 500;
     transition: background var(--dur-fast) var(--ease-soft),
                 color var(--dur-fast) var(--ease-soft);
   }
-  .sidebar__item:hover { background: var(--slip-2); color: var(--ink); }
+  .sidebar__item:hover { background: var(--surface); color: var(--ink); }
   .sidebar__item.is-active {
-    background: var(--pen-soft); color: var(--pen); font-weight: 600;
+    background: var(--surface); color: var(--accent); font-weight: 600;
+    box-shadow: var(--shadow-sm);
   }
-  .sidebar__foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--rule); }
+  .sidebar__foot { margin-top: auto; padding-top: 16px; }
 
   .shell__main { max-width: 1184px; padding: var(--s5) var(--s6) var(--s7); }
   .topbar { padding: var(--s4) var(--s6); }
 }
 
-/* ══ Листки ═════════════════════════════════════════════════════════════
-   Белая бумага поверх поля в клетку. Теней нет намеренно: слоистость даёт
-   сама бумага, а тень под каждой карточкой — признак интерфейса, который
-   не доверяет собственной вёрстке.                                       */
+/* ══ Плоскости ══════════════════════════════════════════════════════════
+   Карточка — белая плоскость, лежащая на освещённом фоне. Глубину даёт
+   не рамка, а трёхслойная тень: контактная, объёмная и дальняя.
+   Рамки нет вовсе — она спорила бы с тенью за один и тот же край.        */
 
 .card {
-  background: var(--slip);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  transition: border-color var(--dur) var(--ease-soft);
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--dur) var(--ease-soft),
+              transform var(--dur) var(--ease-soft);
 }
-.card--pad { padding: var(--s4); }
+.card--pad { padding: var(--s5) var(--s4); }
 
 .card__head {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: var(--s4);
 }
 .card__title {
   margin: 0;
-  font-family: var(--mono);
-  font-size: var(--t-micro); font-weight: 500;
-  letter-spacing: 0.13em; text-transform: uppercase;
-  color: var(--ink-3);
+  font-size: var(--t-lead); font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .stack { display: flex; flex-direction: column; gap: var(--s4); }
@@ -161,175 +161,235 @@
   .grid-2--wide { grid-template-columns: 1.35fr 1fr; }
 }
 
-/* ══ Денежная колонка ═══════════════════════════════════════════════════
-   Подпись слева, сумма справа, между ними пунктирная выноска. Это
-   грамматика чека, и она же — то, чем это приложение отличается от других:
-   один и тот же приём во всех списках — операциях, лимитах, счетах,
-   категориях, легенде графика.                                           */
+.money { white-space: nowrap; font-weight: 600; }
 
-.leader {
-  flex: 1 1 auto;
-  min-width: 10px;
-  align-self: flex-end;
-  margin: 0 8px 6px;
-  border-bottom: 1px dotted var(--faint);
-  opacity: 0.85;
-}
-
-.money { white-space: nowrap; font-weight: 500; }
-
-/* ══ Итог периода ═══════════════════════════════════════════════════════
-   Экран открывается не «карточкой баланса», а итоговой строкой — тем,
-   чем заканчивается чек. Отсюда двойная черта под суммой: в бумажной
-   отчётности она означает окончательный итог.                            */
+/* ══ Сводка ═════════════════════════════════════════════════════════════
+   Первый экран открывается одним крупным числом и тремя показателями под
+   ним. Карточка чуть теплее остальных и приподнята сильнее — это верхний
+   слой интерфейса, и он должен читаться как верхний.                     */
 
 .hero {
-  padding: 20px 18px 18px;
-  background: var(--slip);
-  border: 1px solid var(--rule);
+  position: relative;
+  overflow: hidden;
+  padding: var(--s5) var(--s4) var(--s4);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
 }
+/* Тёплая подсветка из угла. Отдельным слоем, а не фоном карточки:
+   так её видно и в тёмной теме, где заливка была бы почти неразличима. */
+.hero::before {
+  content: '';
+  position: absolute; inset: -40% -30% auto auto;
+  width: 320px; height: 320px; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+  pointer-events: none;
+}
+.hero > * { position: relative; }
+
 .hero__label {
-  font-family: var(--mono);
-  font-size: var(--t-micro); font-weight: 500;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--ink-3);
+  font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent);
   margin: 0 0 10px;
 }
 .hero__value {
+  font-family: var(--num);
   font-size: var(--t-total);
-  font-weight: 500;
-  /* Плотнее обычного: моноширинные цифры и без того широки, а разрядные
-     неразрывные пробелы занимают полную ширину знака — без сжатия сумма
-     расползается на всю карточку и перестаёт читаться как одно число. */
-  letter-spacing: -0.07em;
-  line-height: 1;
-  margin: 0 0 14px;
-  padding-bottom: 14px;
-  /* Двойная черта итога. */
-  border-bottom: 3px double var(--rule-strong);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  margin: 0 0 var(--s5);
 }
-.hero__split { display: flex; flex-direction: column; gap: 0; }
+
+/* Три показателя в ряд, разделённые волосяными линиями — раскладка,
+   в которой доход и расход сравниваются взглядом, а не чтением. */
+.hero__split {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  padding-top: var(--s4);
+}
 .hero__item {
-  display: flex; align-items: baseline;
-  padding: 7px 0;
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 0 var(--s3);
+  min-width: 0;
 }
-.hero__item + .hero__item { border-top: 1px solid var(--rule); }
+.hero__item:first-child { padding-left: 0; }
+.hero__item:last-child { padding-right: 0; }
+.hero__item + .hero__item { border-left: 1px solid var(--line); }
 .hero__item span {
-  font-size: var(--t-small); color: var(--ink-2); flex: 0 0 auto;
+  font-size: var(--t-micro); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .hero__item strong {
-  font-size: var(--t-base); font-weight: 600; letter-spacing: -0.02em; white-space: nowrap;
+  font-family: var(--num);
+  font-size: var(--t-base); font-weight: 700; letter-spacing: -0.03em;
+  white-space: nowrap;
 }
-/* Выноска между подписью и суммой в итоговом блоке. */
-.hero__item::before {
-  content: '';
-  flex: 1 1 auto;
-  order: 1;
-  margin: 0 10px 5px;
-  border-bottom: 1px dotted var(--faint);
-  align-self: flex-end;
-}
-.hero__item strong { order: 2; }
 
-.kpi { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; }
+/* На узком экране три суммы в ряд упираются в края: у «Разницы» есть знак,
+   а у копеек — ещё два знака. Ступенью ниже они помещаются, и колонки
+   остаются колонками, а не переносятся по словам. */
+@media (max-width: 420px) {
+  .hero__item strong { font-size: var(--t-small); }
+  .hero__item { padding: 0 var(--s2); }
+}
+
+/* Показатель периода. Ведущая карточка подсвечена и приподнята: это то
+   единственное число, ради которого открывают аналитику, и в ряду одинаковых
+   белых прямоугольников оно ничем не выделялось. */
+.kpi { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 6px; padding: var(--s4); }
+.kpi--lead { box-shadow: var(--shadow-lift); }
+.kpi--lead::before {
+  content: '';
+  position: absolute; inset: -60% -35% auto auto;
+  width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
+  pointer-events: none;
+}
+.kpi > * { position: relative; }
+.kpi--lead .kpi__value { font-size: var(--t-display); }
 .kpi__label {
-  font-family: var(--mono);
-  font-size: var(--t-micro); letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: var(--t-micro); font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-3);
 }
-.kpi__value { font-size: var(--t-head); font-weight: 600; letter-spacing: -0.03em; }
+.kpi__value { font-family: var(--num); font-size: var(--t-head); font-weight: 700; letter-spacing: -0.03em; }
 
 .tone-expense { color: var(--minus); }
 .tone-income  { color: var(--plus); }
 .tone-muted   { color: var(--ink-2); }
 
 /* ══ Список операций ════════════════════════════════════════════════════
-   Читается как лента чека: день — секция, в конце секции итог дня.       */
+   Строка: цветная иконка категории, название с подписью, сумма справа.
+   Суммы расходов набраны основным тоном, а не красным: в приложении для
+   контроля расходов красной была бы почти каждая строка, и цвет перестал
+   бы что-либо значить. Красный остаётся за превышением и минусом.        */
 
 .tx-day {
   display: flex; align-items: baseline;
-  font-family: var(--mono);
-  font-size: var(--t-micro); font-weight: 500;
-  letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-3);
-  padding: 18px 2px 6px;
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: 2px;
+  padding: var(--s5) 2px var(--s2);
 }
-.tx-day span { margin-left: auto; letter-spacing: 0; text-transform: none; font-size: var(--t-small); }
+.tx-day span {
+  margin-left: auto; letter-spacing: -0.02em; text-transform: none;
+  font-size: var(--t-small); font-weight: 700;
+}
 
 .tx {
-  display: flex; align-items: center; gap: 12px;
-  width: 100%; padding: 9px 8px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; gap: var(--s3);
+  width: 100%; padding: 11px 10px; border-radius: var(--r-sm);
   text-align: left;
   transition: background var(--dur-fast) var(--ease-soft);
 }
-.tx__body { flex: 0 1 auto; min-width: 0; }
-.tx__title { font-size: var(--t-base); font-weight: 500; display: block; letter-spacing: -0.01em; }
+/* Разделитель пунктирный и не доходит до краёв строки — так список
+   читается как связанный, а не нарезанный на карточки. */
+.tx + .tx { box-shadow: inset 0 1px 0 var(--line); }
+.tx__body { flex: 1 1 auto; min-width: 0; }
+.tx__title { font-size: var(--t-base); font-weight: 600; display: block; letter-spacing: -0.015em; }
 .tx__sub {
-  font-size: var(--t-small); color: var(--ink-2);
+  font-size: var(--t-small); color: var(--ink-3);
   display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.tx__amount { font-size: var(--t-base); font-weight: 500; white-space: nowrap; }
+.tx__amount {
+  font-family: var(--num);
+  font-size: var(--t-base); font-weight: 700; letter-spacing: -0.03em;
+  white-space: nowrap;
+}
 .tx__orig {
   display: block; font-size: var(--t-micro); color: var(--ink-3);
-  text-align: right; font-family: var(--mono); letter-spacing: 0;
+  text-align: right; font-family: var(--num);
 }
 .tx.is-pending { opacity: 0.5; }
 
-/* Строка, изменённая другим участником, помечается на полях — так же,
-   как отмечают правку в тетради, а не заливкой всей строки. */
+/* Строка, изменённая другим участником, вспыхивает мягкой заливкой
+   и меткой на левом поле. */
 .tx.is-highlighted { animation: marked 2s var(--ease-soft); }
 @keyframes marked {
-  0%, 55% { box-shadow: inset 3px 0 0 var(--pen); background: var(--pen-soft); }
+  0%, 55% { box-shadow: inset 3px 0 0 var(--accent); background: var(--accent-soft); }
   100%    { box-shadow: inset 3px 0 0 transparent; background: transparent; }
 }
 
-/* ══ Лимиты ═════════════════════════════════════════════════════════════ */
+/* ══ Шкала из штрихов ═══════════════════════════════════════════════════
+   Фирменный приём. Полоса набрана вертикальными штрихами: пройденная часть
+   цветная, остаток — бледный. Штрих даёт фактуру и делит полосу на доли,
+   которые можно пересчитать глазом, — плоская заливка не даёт ни того,
+   ни другого.                                                            */
 
 .progress {
-  height: 6px; border-radius: 2px; background: var(--slip-2);
-  overflow: hidden; border: 1px solid var(--rule);
+  position: relative;
+  height: 14px;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  background: transparent;
 }
+.progress__track,
 .progress__fill {
-  height: 100%;
-  transition: width var(--dur-chart) var(--ease), background var(--dur) var(--ease-soft);
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--tick) 0 3px,
+    transparent 3px 6px
+  );
+}
+.progress__track { --tick: color-mix(in srgb, var(--ink) 14%, transparent); }
+.progress__fill {
+  right: auto;
+  transition: width var(--dur-chart) var(--ease);
 }
 /* Спокойный тон, а не зелёный: потраченные 78% лимита — не хорошая новость,
-   и красить их в цвет дохода значит вводить в заблуждение. Зелёный в этом
-   интерфейсе означает поступление денег, и только это. */
-.progress--ok   .progress__fill { background: var(--ink-2); }
+   и красить их в цвет дохода значит вводить в заблуждение. Зелёный здесь
+   означает поступление денег, и только это. */
+.progress--ok   .progress__fill { --tick: var(--bar, var(--accent)); }
 /* Накопление к цели — единственный прогресс, который действительно
-   хорошая новость, поэтому только он остаётся зелёным. */
-.progress--goal .progress__fill { background: var(--plus); }
-.progress--warn .progress__fill { background: var(--flag); }
-.progress--over .progress__fill { background: var(--minus); }
+   хорошая новость, поэтому только он зелёный. */
+.progress--goal .progress__fill { --tick: var(--plus); }
+.progress--warn .progress__fill { --tick: var(--warn); }
+.progress--over .progress__fill { --tick: var(--minus); }
 
-.limit { display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; }
-.limit + .limit { border-top: 1px solid var(--rule); }
-.limit__top { display: flex; align-items: center; gap: 10px; }
-.limit__name { font-size: var(--t-base); font-weight: 500; }
-.limit__nums {
-  font-family: var(--mono);
+/* Остаток под шкалой месяца — то число, ради которого на шкалу смотрят. */
+.budget-rest {
+  margin: var(--s2) 0 0;
   font-size: var(--t-small); color: var(--ink-2);
+}
+.budget-rest strong {
+  font-family: var(--num);
+  font-size: var(--t-base); font-weight: 700; letter-spacing: -0.02em;
+}
+
+.limit { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) 0; }
+.limit + .limit { border-top: 1px solid var(--line); }
+.limit__top { display: flex; align-items: center; gap: 10px; }
+.limit__name { font-size: var(--t-base); font-weight: 600; letter-spacing: -0.015em; }
+.limit__nums {
+  font-family: var(--num);
+  font-size: var(--t-small); font-weight: 600; color: var(--ink-3);
   display: flex; justify-content: space-between; gap: 12px;
 }
 
 /* ══ Кнопки ═════════════════════════════════════════════════════════════ */
 
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  border-radius: var(--radius-sm);
-  font-weight: 500; white-space: nowrap;
-  border: 1px solid transparent;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--r-pill);
+  font-weight: 600; letter-spacing: -0.01em; white-space: nowrap;
   transition: background var(--dur-fast) var(--ease-soft),
-              border-color var(--dur-fast) var(--ease-soft),
+              box-shadow var(--dur-fast) var(--ease-soft),
+              color var(--dur-fast) var(--ease-soft),
               transform var(--dur-tap) var(--ease-soft);
 }
-.btn:active:not(:disabled) { transform: scale(0.975); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn--sm { padding: 6px 11px; font-size: var(--t-small); }
-/* Кнопки-иконки в шапке — полноразмерная цель нажатия на сенсорном экране. */
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.btn--sm { padding: 7px 13px; font-size: var(--t-small); }
+.btn--md { padding: 10px 17px; font-size: var(--t-base); }
+.btn--lg { padding: 14px 22px; font-size: var(--t-base); }
+.btn--full { width: 100%; }
+.btn--icon { padding: 9px; border-radius: var(--r-sm); }
+
 /* 44 px — минимальная цель нажатия. Ниже палец промахивается, и это
    не вопрос эстетики: на экране ввода расхода промах стоит лишней операции. */
 @media (pointer: coarse) {
@@ -338,245 +398,282 @@
   .period-picker { min-height: 44px; }
   .segmented__item { min-height: 44px; }
   .tabbar__item { min-height: 44px; }
+  .chip { min-height: 40px; }
 }
-.btn--md { padding: 9px 14px; font-size: var(--t-base); }
-.btn--lg { padding: 13px 20px; font-size: var(--t-base); }
-.btn--full { width: 100%; }
-.btn--icon { padding: 8px; }
-.btn--primary { background: var(--pen); color: var(--on-pen); }
-.btn--primary:hover:not(:disabled) { background: var(--pen-hover); }
-.btn--secondary { background: var(--slip); color: var(--ink); border-color: var(--rule-strong); }
-.btn--secondary:hover:not(:disabled) { background: var(--slip-2); }
+
+.btn--primary {
+  background: linear-gradient(150deg, var(--accent-lift), var(--accent-hover));
+  color: var(--on-accent);
+  box-shadow: var(--shadow-accent);
+}
+.btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
+/* На фоне страницы вторичная кнопка — белая плоскость с тенью; внутри
+   белой панели тень не читается, поэтому там она становится утопленной.
+   Один вид на обоих фонах либо теряется, либо выглядит наклейкой. */
+.btn--secondary {
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm);
+}
+.btn--secondary:hover:not(:disabled) { box-shadow: var(--shadow-card); }
+.card .btn--secondary,
+.sheet .btn--secondary {
+  background: var(--surface-2); box-shadow: none;
+}
+.card .btn--secondary:hover:not(:disabled),
+.sheet .btn--secondary:hover:not(:disabled) { background: var(--surface-hover); }
 .btn--ghost { color: var(--ink-2); }
-.btn--ghost:hover:not(:disabled) { background: var(--slip-2); color: var(--ink); }
+.btn--ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
 .btn--danger { background: var(--minus-soft); color: var(--minus); }
 
 /* ══ Формы ══════════════════════════════════════════════════════════════
-   Поле — строка, на которой пишут: подчёркивание вместо рамки со всех
-   сторон. Рамка появляется в фокусе, когда поле действительно активно.   */
+   Поле — мягкая утопленная плоскость. Подчёркивания больше нет: рядом
+   с приподнятыми карточками оно читалось как остаток от другой системы.  */
 
-.field { display: flex; flex-direction: column; gap: 6px; }
+.field { display: flex; flex-direction: column; gap: 7px; }
 .field__label {
-  font-family: var(--mono);
-  font-size: var(--t-micro); font-weight: 500;
-  letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-3);
 }
 .field__hint { font-size: var(--t-small); color: var(--ink-3); }
-.field__error { font-size: var(--t-small); color: var(--minus); }
+.field__error { font-size: var(--t-small); color: var(--minus); font-weight: 500; }
 
 .input, .select, .textarea {
-  width: 100%; padding: 10px 2px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--rule-strong);
-  border-radius: 0;
+  width: 100%; padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-sm);
   font-size: var(--t-base); color: var(--ink);
-  transition: border-color var(--dur-fast) var(--ease-soft);
+  transition: border-color var(--dur-fast) var(--ease-soft),
+              background var(--dur-fast) var(--ease-soft);
 }
 .input:focus, .select:focus, .textarea:focus {
-  outline: none; border-bottom-color: var(--pen); border-bottom-width: 2px;
-  padding-bottom: 9px;
+  outline: none;
+  background: var(--surface);
+  border-color: var(--accent);
 }
 .input::placeholder { color: var(--ink-3); }
-.textarea { resize: vertical; min-height: 64px; }
+.textarea { resize: vertical; min-height: 72px; }
 .select { appearance: none; }
-.search .input { padding-left: 26px; }
-.search > svg { left: 2px; }
+.search .input { padding-left: 38px; border-radius: var(--r-pill); }
+.search > svg { left: 14px; }
 
-.segmented {
-  display: flex; gap: 0;
-  border-bottom: 1px solid var(--rule);
-}
+/* Переключатель типа операции — ряд таблеток, как в поиске по фильтрам. */
+.segmented { display: flex; gap: 6px; }
 .segmented__item {
-  flex: 1; padding: 9px 10px;
-  font-size: var(--t-small); font-weight: 500; letter-spacing: -0.01em;
-  color: var(--ink-3);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color var(--dur-fast) var(--ease-soft),
-              border-color var(--dur-fast) var(--ease-soft);
+  flex: 1; padding: 10px 12px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-size: var(--t-small); font-weight: 600; letter-spacing: -0.01em;
+  color: var(--ink-2);
+  transition: background var(--dur-fast) var(--ease-soft),
+              color var(--dur-fast) var(--ease-soft),
+              box-shadow var(--dur-fast) var(--ease-soft);
 }
-.segmented__item.is-active { color: var(--ink); border-bottom-color: var(--ink); }
-.segmented__item.is-active.tone-expense { color: var(--minus); border-bottom-color: var(--minus); }
-.segmented__item.is-active.tone-income { color: var(--plus); border-bottom-color: var(--plus); }
+.segmented__item:hover { color: var(--ink); }
+.segmented__item.is-active {
+  background: var(--accent); color: var(--on-accent);
+  box-shadow: var(--shadow-accent);
+}
+.segmented__item.is-active.tone-income {
+  background: var(--plus); color: #ffffff;
+  box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--plus) 40%, transparent);
+}
 
 /* ── Ввод суммы ─────────────────────────────────────────────────────────
-   Главный элемент формы. Сумма набирается моноширинным и подчёркнута —
-   как графа, которую заполняют.                                          */
+   Главный элемент формы: крупное число по центру на утопленной плашке.   */
 
 .amount-input {
   display: flex; align-items: baseline; justify-content: center; gap: 8px;
-  padding: 22px 0 16px;
-  border-bottom: 3px double var(--rule-strong);
-  margin-bottom: 6px;
+  padding: var(--s5) var(--s4);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  margin-bottom: var(--s2);
 }
 .amount-input input {
-  width: 100%; text-align: center; border: none; background: transparent;
-  font-family: var(--mono);
-  font-size: var(--t-total); font-weight: 500; letter-spacing: -0.05em;
+  /* Ширина по содержимому, а не во всю строку: при `width: 100%` знак валюты
+     уезжал к дальнему краю плашки и переставал читаться как часть суммы. */
+  flex: 0 1 auto; width: 7ch; min-width: 3ch; max-width: 100%;
+  field-sizing: content;
+  text-align: right; border: none; background: transparent;
+  font-family: var(--num);
+  font-size: var(--t-total); font-weight: 800; letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 .amount-input input:focus { outline: none; }
 .amount-input input::placeholder { color: var(--faint); }
-.amount-input__cur { font-size: var(--t-head); font-weight: 500; color: var(--ink-3); }
+.amount-input__cur { font-family: var(--num); font-size: var(--t-head); font-weight: 700; color: var(--ink-3); }
 
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 11px; border-radius: var(--radius-sm);
-  background: transparent; border: 1px solid var(--rule);
-  font-size: var(--t-small); font-weight: 500; color: var(--ink-2);
-  transition: border-color var(--dur-fast) var(--ease-soft),
-              background var(--dur-fast) var(--ease-soft),
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 13px; border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-size: var(--t-small); font-weight: 600; color: var(--ink-2);
+  transition: background var(--dur-fast) var(--ease-soft),
               color var(--dur-fast) var(--ease-soft),
               transform var(--dur-tap) var(--ease-soft);
 }
-.chip:hover { border-color: var(--rule-strong); color: var(--ink); }
-.chip.is-active { border-color: var(--pen); background: var(--pen-soft); color: var(--pen); }
+.chip:hover { background: var(--surface-hover); color: var(--ink); }
+.chip.is-active { background: var(--accent-soft); color: var(--accent); }
 .chip:active { transform: scale(0.96); }
 
 /* ══ Панель снизу ═══════════════════════════════════════════════════════ */
 
 .sheet__backdrop {
   position: fixed; inset: 0; z-index: 60;
-  background: color-mix(in srgb, var(--ink) 42%, transparent);
+  background: color-mix(in srgb, var(--ink) 44%, transparent);
+  backdrop-filter: blur(3px);
   display: flex; align-items: flex-end; justify-content: center;
   animation: fade var(--dur-fast) var(--ease-soft);
 }
 @keyframes fade { from { opacity: 0; } }
-@keyframes rise { from { transform: translateY(16px); opacity: 0; } }
+@keyframes rise { from { transform: translateY(18px); opacity: 0; } }
 
 .sheet {
   width: 100%; max-width: 540px; max-height: 92vh;
   display: flex; flex-direction: column;
-  background: var(--slip);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--shadow-pop);
   animation: rise var(--dur) var(--ease);
   padding-bottom: var(--safe-b);
 }
 .sheet--wide { max-width: 740px; }
 .sheet__head {
-  position: relative; padding: 16px 52px 12px; text-align: center;
-  border-bottom: 1px solid var(--rule);
+  position: relative; padding: 14px 52px 14px; text-align: center;
 }
 .sheet__grip {
-  width: 34px; height: 3px; border-radius: 2px; background: var(--faint);
+  width: 38px; height: 4px; border-radius: var(--r-pill); background: var(--line-strong);
   margin: 0 auto 12px;
 }
 .sheet__title {
   margin: 0;
-  font-family: var(--mono);
-  font-size: var(--t-micro); font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--ink-2);
+  font-size: var(--t-base); font-weight: 700; letter-spacing: -0.02em;
+  color: var(--ink);
 }
 .sheet__close {
-  position: absolute; right: 12px; top: 12px;
-  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  position: absolute; right: 12px; top: 10px;
+  width: 36px; height: 36px; border-radius: 50%;
   display: grid; place-items: center; color: var(--ink-3);
+  background: var(--surface-2);
   transition: background var(--dur-fast) var(--ease-soft), color var(--dur-fast) var(--ease-soft);
 }
-.sheet__close:hover { background: var(--slip-2); color: var(--ink); }
-.sheet__body { overflow-y: auto; padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 16px; }
-.sheet__foot { padding: 12px 18px 16px; border-top: 1px solid var(--rule); display: flex; gap: 10px; }
+.sheet__close:hover { background: var(--surface-hover); color: var(--ink); }
+.sheet__body { overflow-y: auto; padding: var(--s2) var(--s4) var(--s5); display: flex; flex-direction: column; gap: var(--s4); }
+.sheet__foot { padding: var(--s3) var(--s4) var(--s4); border-top: 1px solid var(--line); display: flex; gap: 10px; }
 
 @media (min-width: 700px) {
   .sheet__backdrop { align-items: center; }
-  .sheet { border-radius: var(--radius-lg); max-height: 86vh; }
+  .sheet { border-radius: var(--r-xl); max-height: 86vh; }
   .sheet__grip { display: none; }
 }
 
 /* ══ Служебные состояния ════════════════════════════════════════════════ */
 
 .empty {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 36px 18px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: var(--s2);
+  padding: var(--s6) var(--s4); text-align: center;
 }
 .empty__icon {
-  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  width: 56px; height: 56px; border-radius: 50%;
   display: grid; place-items: center;
-  border: 1px dashed var(--rule-strong); color: var(--ink-3);
+  background: var(--accent-soft); color: var(--accent);
 }
-.empty__title { margin: 6px 0 0; font-size: var(--t-base); font-weight: 600; }
-.empty__text { margin: 0 0 8px; font-size: var(--t-small); color: var(--ink-2); max-width: 300px; line-height: 1.5; }
+.empty__title { margin: 6px 0 0; font-size: var(--t-base); font-weight: 700; letter-spacing: -0.02em; }
+.empty__text { margin: 0 0 var(--s2); font-size: var(--t-small); color: var(--ink-2); max-width: 300px; line-height: 1.5; }
 
 .skeleton {
-  background: var(--slip-2);
+  background: var(--surface-2);
   animation: pulse 1.4s var(--ease-soft) infinite;
 }
 @keyframes pulse { 50% { opacity: 0.5; } }
 
-.cat-dot { display: inline-grid; place-items: center; border-radius: var(--radius-sm); flex: none; }
+/* Иконка категории — цвет категории на его же подложке. Скруглённый
+   квадрат, а не круг: рядом с круглыми аватарами участников он сразу
+   читается как другой тип объекта. */
+.cat-dot {
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: var(--r-xs);
+  background: color-mix(in oklab, var(--cat) 13%, var(--surface));
+  color: var(--cat);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .cat-dot {
+    background: color-mix(in oklab, var(--cat) 24%, var(--surface));
+    color: color-mix(in oklab, var(--cat), #ffffff 32%);
+  }
+}
+:root[data-theme='dark'] .cat-dot {
+  background: color-mix(in oklab, var(--cat) 24%, var(--surface));
+  color: color-mix(in oklab, var(--cat), #ffffff 32%);
+}
 
 .banner {
-  display: flex; align-items: center; gap: 9px;
-  padding: 9px 12px; border-radius: var(--radius-sm);
-  font-size: var(--t-small); font-weight: 500;
-  border: 1px solid;
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: var(--r-sm);
+  font-size: var(--t-small); font-weight: 600;
 }
-.banner--offline { background: var(--flag-soft); color: var(--flag); border-color: color-mix(in srgb, var(--flag) 30%, transparent); }
-.banner--error { background: var(--minus-soft); color: var(--minus); border-color: color-mix(in srgb, var(--minus) 30%, transparent); }
+.banner--offline { background: var(--warn-soft); color: var(--warn); }
+.banner--error { background: var(--minus-soft); color: var(--minus); }
 
 .toasts {
   position: fixed; z-index: 70; left: 50%; transform: translateX(-50%);
   bottom: calc(var(--nav-h) + var(--safe-b) + 88px);
-  display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: var(--s2); width: min(400px, calc(100vw - 32px));
 }
 @media (min-width: 900px) { .toasts { bottom: 24px; left: auto; right: 24px; transform: none; } }
 .toast {
   display: flex; align-items: center; gap: 10px;
-  padding: 11px 13px; border-radius: var(--radius-sm);
-  background: var(--slip); border: 1px solid var(--rule-strong);
-  box-shadow: var(--shadow-pop); font-size: var(--t-small);
+  padding: 12px 14px; border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop); font-size: var(--t-small); font-weight: 500;
   animation: rise var(--dur) var(--ease);
 }
-.toast--error { border-color: var(--minus); color: var(--minus); }
-.toast--success { border-color: var(--plus); color: var(--plus); }
+.toast--error { color: var(--minus); }
+.toast--success { color: var(--plus); }
 
 .list-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 11px 2px; border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; gap: var(--s3);
+  padding: 13px 2px;
   transition: background var(--dur-fast) var(--ease-soft);
 }
-.list-row:last-child { border-bottom: none; }
-.list-row__body { flex: 0 1 auto; min-width: 0; }
-.list-row__title { font-size: var(--t-base); font-weight: 500; }
-.list-row__sub { font-size: var(--t-small); color: var(--ink-2); }
+.list-row + .list-row { border-top: 1px solid var(--line); }
+.list-row__body { flex: 1 1 auto; min-width: 0; }
+.list-row__title { font-size: var(--t-base); font-weight: 600; letter-spacing: -0.015em; }
+.list-row__sub { font-size: var(--t-small); color: var(--ink-3); }
 
 .badge {
-  padding: 3px 8px; border-radius: 2px;
-  font-family: var(--mono);
-  font-size: var(--t-micro); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-  background: var(--slip-2); color: var(--ink-2); border: 1px solid var(--rule);
+  padding: 4px 10px; border-radius: var(--r-pill);
+  font-size: var(--t-micro); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  background: var(--surface-2); color: var(--ink-2);
 }
-.badge--owner { background: var(--pen-soft); color: var(--pen); border-color: color-mix(in srgb, var(--pen) 26%, transparent); }
-.badge--editor { background: var(--plus-soft); color: var(--plus); border-color: color-mix(in srgb, var(--plus) 26%, transparent); }
+.badge--owner { background: var(--accent-soft); color: var(--accent); }
+.badge--editor { background: var(--plus-soft); color: var(--plus); }
 
 .code-box {
   display: flex; align-items: center; gap: 10px;
-  padding: 14px; border-radius: var(--radius-sm);
-  background: var(--slip-2); border: 1px dashed var(--rule-strong);
-  font-family: var(--mono);
-  font-size: var(--t-lead); font-weight: 500; letter-spacing: 0.1em;
+  padding: var(--s4); border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-family: var(--num);
+  font-size: var(--t-lead); font-weight: 700; letter-spacing: 0.12em;
 }
 
 .conflict-option {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 12px 14px; border-radius: var(--radius-sm);
-  border: 1px solid var(--rule); background: var(--slip-2); text-align: left; width: 100%;
+  display: flex; flex-direction: column; gap: 5px;
+  padding: var(--s3) var(--s4); border-radius: var(--r-sm);
+  background: var(--surface-2); text-align: left; width: 100%;
+  border: 1.5px solid transparent;
   transition: border-color var(--dur-fast) var(--ease-soft);
 }
-.conflict-option:hover { border-color: var(--pen); }
+.conflict-option:hover { border-color: var(--accent); }
 .conflict-option span {
-  font-family: var(--mono);
-  font-size: var(--t-micro); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+  font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
 }
 .conflict-option strong {
-  font-family: var(--mono);
-  font-size: var(--t-head); font-weight: 500; letter-spacing: -0.03em;
+  font-family: var(--num);
+  font-size: var(--t-head); font-weight: 700; letter-spacing: -0.03em;
 }
 
 .search { position: relative; }
@@ -585,74 +682,150 @@
   color: var(--ink-3); pointer-events: none;
 }
 
-/* ══ Графики ════════════════════════════════════════════════════════════ */
+/* ══ Графики ════════════════════════════════════════════════════════════
+   Объём здесь не украшение: график лежит НА карточке, а не в одной с ней
+   плоскости, и без тени читается как напечатанный на ней рисунок.
+   Свет всюду падает сверху слева — один источник на все три графика.     */
 
 .donut { display: grid; place-items: center; }
-.donut__value { font-family: var(--mono); font-size: var(--t-lead); font-weight: 500; fill: var(--ink); }
+/* Тень и утолщённая при наведении дуга выходят за пределы viewBox.
+   По умолчанию SVG обрезает всё за его краем — кольцо срезалось по бокам. */
+.donut svg { overflow: visible; }
+
+/* Ложе: кольцо шире самого кольца и в цвет утопленной поверхности.
+   Даёт кольцу опору, иначе оно висит посреди карточки. */
+.donut__bed { stroke: var(--surface-2); }
+
+/* Тень короткая и мягкая: расстояние до карточки маленькое. */
+.donut__ring { filter: drop-shadow(0 7px 9px var(--chart-shadow)); }
+
+.donut__value { font-family: var(--num); font-size: var(--t-head); font-weight: 800; letter-spacing: -0.03em; fill: var(--ink); }
 .donut__label {
-  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: 0.1em;
+  font-size: var(--t-micro); font-weight: 600; letter-spacing: 0.07em;
   text-transform: uppercase; fill: var(--ink-3);
 }
+/* Сектор красится цветом своей категории. В тёмной теме тон подмешивается
+   с белым: насыщенный цвет на тёмной плоскости иначе проваливается. */
+.donut__arc { stroke: var(--cat); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .donut__arc { stroke: color-mix(in oklab, var(--cat), #ffffff 26%); }
+  :root:not([data-theme='light']) .legend__swatch { background: color-mix(in oklab, var(--cat), #ffffff 26%); }
+}
+:root[data-theme='dark'] .donut__arc { stroke: color-mix(in oklab, var(--cat), #ffffff 26%); }
+:root[data-theme='dark'] .legend__swatch { background: color-mix(in oklab, var(--cat), #ffffff 26%); }
 
-/* Легенда — та же денежная колонка с выноской. */
 .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .legend__row {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 6px 0; font-size: var(--t-small);
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; font-size: var(--t-small);
 }
-.legend__swatch { width: 8px; height: 8px; border-radius: 1px; flex: none; align-self: center; }
-.legend__label { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.legend__pct {
-  font-family: var(--mono); font-size: var(--t-micro); color: var(--ink-3);
-  min-width: 32px; text-align: right; order: 3;
+.legend__row + .legend__row { border-top: 1px solid var(--line); }
+.legend__swatch {
+  width: 10px; height: 10px; border-radius: 3px; flex: none;
+  background: var(--cat);
+  box-shadow: 0 1px 2px var(--chart-shadow);
+}
+.legend__label {
+  flex: 1 1 auto; min-width: 0; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .legend__value {
-  font-family: var(--mono); font-weight: 500; min-width: 86px; text-align: right; order: 4;
-}
-.legend__row::after {
-  content: ''; flex: 1 1 auto; order: 2;
-  margin: 0 8px 5px; border-bottom: 1px dotted var(--faint); align-self: flex-end;
+  font-family: var(--num); font-weight: 700; letter-spacing: -0.02em;
+  text-align: right; white-space: nowrap;
 }
 
+/* ── Столбцы ─────────────────────────────────────────────────────────── */
+
 .bars__plot { position: relative; display: flex; align-items: flex-end; }
-.bars__base { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--rule-strong); }
+/* Основание — не линия, а полоса света, гаснущая к краям: край графика
+   не должен обрываться чертой. */
+.bars__base {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong) 12%, var(--line-strong) 88%, transparent);
+}
 .bars__group { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
-.bars__pair { display: flex; align-items: flex-end; gap: 2px; height: 100%; width: 100%; justify-content: center; }
+.bars__pair { display: flex; align-items: flex-end; gap: 3px; height: 100%; width: 100%; justify-content: center; }
 .bars__bar {
-  width: 34%; max-width: 14px; min-height: 2px; border-radius: 1px;
+  width: 34%; max-width: 16px; min-height: 3px;
+  border-radius: var(--r-pill) var(--r-pill) 3px 3px;
+  /* Блик по левой грани поверх собственной заливки — столбец читается
+     как гранёный, а не как прямоугольник заливки. */
+  background-image: linear-gradient(101deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0) 44%);
+  /* Тень падает вниз, за основание: столбец касается плоскости. */
+  box-shadow: 0 6px 9px -4px var(--chart-shadow);
   transition: height var(--dur-chart) var(--ease), opacity var(--dur-fast) var(--ease-soft);
 }
-.bars__bar--income { background: var(--plus); }
-.bars__bar--expense { background: var(--minus); }
+/* Доход — светлая заливка, расход — плотная: в приложении про контроль
+   расходов визуальный вес должен быть на той стороне, которой управляют. */
+.bars__bar--income {
+  background-color: color-mix(in srgb, var(--plus) 34%, transparent);
+}
+.bars__bar--expense {
+  background-color: var(--accent);
+  background-image:
+    linear-gradient(101deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0) 44%),
+    linear-gradient(180deg, var(--accent-bright), var(--accent));
+}
 .bars__tip {
-  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; gap: 2px; white-space: nowrap;
-  padding: 8px 10px; border-radius: var(--radius-sm); font-size: var(--t-small);
-  background: var(--slip); border: 1px solid var(--rule-strong);
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 3px; white-space: nowrap;
+  padding: 9px 12px; border-radius: var(--r-sm); font-size: var(--t-small); font-weight: 600;
+  background: var(--surface);
   box-shadow: var(--shadow-pop); z-index: 5;
 }
-.bars__axis { display: flex; margin-top: 8px; }
+.bars__axis { display: flex; margin-top: var(--s2); }
 .bars__axis span {
   text-align: center;
-  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: 0.08em;
+  font-size: var(--t-micro); font-weight: 600; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--ink-3);
 }
 
+/* ── Накопительная кривая ────────────────────────────────────────────── */
+
 .area { position: relative; }
+
+/* Смещённая вниз размытая копия линии. Поднимает кривую над заливкой:
+   без неё линия и заливка лежат в одной плоскости. */
+.area__cast { opacity: 0.18; filter: blur(4px); }
+
+/* Опорная прямая равномерного темпа. */
+.area__pace { stroke: var(--faint); stroke-width: 1.5; fill: none; }
+.area__cursor { stroke: var(--line-strong); stroke-width: 1; }
+.area__dot-halo { opacity: 0.22; }
+
+/* Подпись — плашка над графиком. Раньше это был текст без фона: на светлом
+   участке заливки он сливался с ней, а в тёмной теме исчезал совсем. */
 .area__tip {
-  position: absolute; top: 0; right: 0;
-  display: flex; flex-direction: column; align-items: flex-end;
-  font-family: var(--mono); font-size: var(--t-micro); color: var(--ink-3);
+  position: absolute; top: 8px; right: 10px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  padding: 8px 12px; border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
 }
-.area__tip strong { color: var(--ink); font-size: var(--t-small); font-weight: 500; }
+.area__tip strong {
+  font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3);
+}
+.area__tip .money { font-size: var(--t-base); font-weight: 700; color: var(--ink); }
+
+.area__legend {
+  display: flex; align-items: center; gap: var(--s2);
+  margin: var(--s3) 0 0;
+  font-size: var(--t-small); color: var(--ink-3);
+}
+.area__legend-dash {
+  width: 22px; height: 0; flex: none;
+  border-top: 1.5px dashed var(--faint);
+}
 
 /* ══ Вход ═══════════════════════════════════════════════════════════════ */
 
-.auth { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
-.auth__box { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 18px; }
+.auth { min-height: 100dvh; display: grid; place-items: center; padding: var(--s5); }
+.auth__box { width: 100%; max-width: 392px; display: flex; flex-direction: column; gap: var(--s5); }
 .auth__brand {
-  display: flex; align-items: center; gap: 10px;
-  font-size: var(--t-head); font-weight: 700; letter-spacing: -0.03em;
+  display: flex; align-items: center; gap: 11px;
+  font-size: var(--t-head); font-weight: 800; letter-spacing: -0.035em;
 }
 .auth__lead { margin: 0; color: var(--ink-2); font-size: var(--t-base); line-height: 1.55; }
 
@@ -661,36 +834,18 @@
    :hover залипает после касания и выглядит поломкой.                     */
 
 @media (hover: hover) and (pointer: fine) {
-  .card:hover { border-color: var(--rule-strong); }
-  .tx:hover { background: var(--slip-2); }
-  .list-row:hover { background: var(--slip-2); }
-  .fab:hover { box-shadow: 0 6px 20px color-mix(in srgb, var(--pen) 44%, transparent); }
+  .card:hover { box-shadow: var(--shadow-lift); }
+  .tx:hover { background: var(--surface-2); }
+  .list-row:hover { background: var(--surface-2); }
+  .fab:hover { transform: translateY(-2px); box-shadow: 0 10px 26px -4px rgba(209, 39, 92, 0.46); }
 }
 
 /* ══ Движение ═══════════════════════════════════════════════════════════
-   Движения намеренно мало. Анимируются три вещи, и каждая что-то сообщает:
-   сумма, которая изменилась; график, который строится; отклик на касание.
-   Каскадных появлений нет — они ничего не сообщают и делают интерфейс
-   похожим на демонстрацию самого себя.                                   */
-
-/* Выноска прочерчивается — единственный поставленный момент в интерфейсе.
-   Он приходится на фирменный приём и читается как «строку вписывают
-   в тетрадь». Ключ строки — идентификатор операции, поэтому при обновлении
-   данных прочерчиваются только НОВЫЕ строки, а не весь список заново:
-   движение отмечает появление, а не сопровождает перерисовку. */
-@keyframes draw-leader {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
-}
-.leader {
-  transform-origin: left center;
-  /* Без fill-mode и без задержек — намеренно. Анимации не идут в фоновой
-     вкладке, и при `both` выноска осталась бы схлопнутой: покой должен быть
-     нормальным состоянием, а анимация — тем, что случается поверх него.
-     Задержки убраны заодно: со ступенчатым запуском при остановленных
-     анимациях строки моргали бы полной шириной перед схлопыванием. */
-  animation: draw-leader 280ms var(--ease);
-}
+   Движения намеренно мало. Анимируются вещи, каждая из которых что-то
+   сообщает: сумма, которая изменилась (изменение может прийти с другого
+   устройства); график, который строится; шкала, которая наполняется;
+   отклик на касание. Каскадных появлений нет — они ничего не сообщают
+   и делают интерфейс похожим на демонстрацию самого себя.                */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -711,11 +866,11 @@
 .budget-switch__button {
   display: flex; align-items: center; gap: 10px;
   width: 100%;
-  padding: 9px 10px; margin-bottom: 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--rule);
-  background: var(--slip);
-  font-size: var(--t-small); font-weight: 600; letter-spacing: -0.01em;
+  padding: 11px 12px; margin-bottom: var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--t-small); font-weight: 700; letter-spacing: -0.015em;
   text-align: left;
 }
 .budget-current { color: var(--ink); }
@@ -726,39 +881,37 @@
 }
 .budget-switch { position: relative; }
 .budget-switch__button {
-  transition: border-color var(--dur-fast) var(--ease-soft),
-              background var(--dur-fast) var(--ease-soft);
+  transition: box-shadow var(--dur-fast) var(--ease-soft);
 }
-.budget-switch__button:hover { border-color: var(--rule-strong); background: var(--slip-2); }
+.budget-switch__button:hover { box-shadow: var(--shadow-card); }
 
 .budget-switch__menu {
   position: absolute; z-index: 40;
-  top: calc(100% - 2px); left: 0; right: 0;
+  top: calc(100% - 4px); left: 0; right: 0;
   display: flex; flex-direction: column;
-  padding: 4px;
-  background: var(--slip);
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius);
+  padding: 6px;
+  background: var(--surface);
+  border-radius: var(--r);
   box-shadow: var(--shadow-pop);
   animation: rise var(--dur-fast) var(--ease);
 }
 .budget-switch__item {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 8px 9px; border-radius: var(--radius-sm);
+  display: flex; align-items: baseline; gap: var(--s2);
+  padding: 9px 10px; border-radius: var(--r-xs);
   text-align: left; color: var(--ink); font-size: var(--t-small);
   transition: background var(--dur-fast) var(--ease-soft);
 }
-.budget-switch__item:hover { background: var(--slip-2); }
-.budget-switch__item.is-current { color: var(--pen); font-weight: 600; }
+.budget-switch__item:hover { background: var(--surface-2); }
+.budget-switch__item.is-current { color: var(--accent); font-weight: 700; }
 .budget-switch__item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .budget-switch__item-role {
-  font-family: var(--mono);
-  font-size: var(--t-micro); letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: var(--t-micro); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--ink-3);
 }
 .budget-switch__item--muted {
   color: var(--ink-2);
-  border-top: 1px solid var(--rule);
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  margin-top: 4px; padding-top: 10px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-xs) var(--r-xs);
+  margin-top: var(--s1); padding-top: 11px;
 }

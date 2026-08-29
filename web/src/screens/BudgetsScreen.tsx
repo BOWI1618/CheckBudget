@@ -94,7 +94,7 @@ export function BudgetsScreen({ period }: { period: string }) {
 
               {limit && (
                 <>
-                  <ProgressBar value={pct} tone={tone} />
+                  <ProgressBar value={pct} tone={tone} color={category.color} />
                   <div className="limit__nums">
                     <span className="money">
                       {formatMoney(limit.spentMinor, base)} из {formatMoney(limit.limitMinor, base)}

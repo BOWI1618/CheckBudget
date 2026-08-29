@@ -47,7 +47,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
       largest.push({
         id: tx.id, amount: tx.baseAmountMinor, day: tx.occurredOn,
         label: category?.name ?? 'Без категории',
-        color: category?.color ?? '#64748b',
+        color: category?.color ?? 'var(--cat-slate)',
         icon: category?.icon ?? 'tag',
       });
     }
@@ -55,7 +55,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
     const slices: Slice[] = [...byRoot.entries()]
       .map(([id, value]) => {
         const category = categoryById.get(id);
-        return { id, value, label: category?.name ?? 'Прочее', color: category?.color ?? '#64748b' };
+        return { id, value, label: category?.name ?? 'Прочее', color: category?.color ?? 'var(--cat-slate)' };
       })
       .sort((a, b) => b.value - a.value);
 
@@ -102,9 +102,12 @@ export function AnalyticsScreen({ period }: { period: string }) {
       />
 
       <div className="grid-2">
-        <Card className="kpi">
+        <Card className="kpi kpi--lead">
           <span className="kpi__label">{formatPeriod(period)}</span>
-          <span className={`kpi__value tnum ${kind === 'expense' ? 'tone-expense' : 'tone-income'}`}>
+          {/* Сумма расходов набрана основным тоном: красный в этом интерфейсе
+              означает проблему, а не «это расходы». Цвет ушёл на соседнюю
+              карточку — там он отвечает на вопрос «стало хуже или лучше». */}
+          <span className={`kpi__value tnum ${kind === 'income' ? 'tone-income' : ''}`}>
             {formatMoney(analysis.current, base)}
           </span>
         </Card>
@@ -112,7 +115,13 @@ export function AnalyticsScreen({ period }: { period: string }) {
           <span className="kpi__label">
             Против {formatPeriod(shiftPeriod(period, -1)).toLowerCase()}
           </span>
-          <span className="kpi__value tnum">
+          {/* Рост расходов — плохая новость, рост доходов — хорошая, поэтому
+              одно и то же «+4%» красится по-разному. Цвет здесь несёт вывод,
+              которого в самом числе нет. */}
+          <span className={`kpi__value tnum ${
+            delta === null || delta === 0 ? ''
+              : (delta > 0) === (kind === 'income') ? 'tone-income' : 'tone-expense'
+          }`}>
             {/* Тот же знак минуса, что и в суммах: «−», а не дефис. */}
             {delta === null ? '—' : `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}%`}
             <span className="tone-muted" style={{ fontSize: 'var(--t-small)', fontWeight: 500, marginLeft: 8 }}>
@@ -127,9 +136,14 @@ export function AnalyticsScreen({ period }: { period: string }) {
         {analysis.current === 0 ? (
           <EmptyState icon="chart" title="Данных за период нет" />
         ) : (
+          /* Прошлый месяц задаёт равномерный темп: кривая выше пунктира —
+             тратится быстрее, чем месяцем раньше. Без опоры накопительная
+             кривая растёт всегда и сама по себе ни о чём не сообщает. */
           <AreaLine
             values={analysis.cumulative} labels={analysis.days} currency={base}
-            color={kind === 'expense' ? 'var(--expense)' : 'var(--income)'}
+            color={kind === 'expense' ? 'var(--accent)' : 'var(--income)'}
+            pace={analysis.prior}
+            paceLabel={`Темп ${formatPeriod(shiftPeriod(period, -1)).toLowerCase()}`}
           />
         )}
       </Card>
@@ -167,7 +181,6 @@ export function AnalyticsScreen({ period }: { period: string }) {
                 <div className="list-row__title">{item.label}</div>
                 <div className="list-row__sub">{formatShortDate(item.day)}</div>
               </div>
-              <span className="leader" aria-hidden="true" />
               <span className="money" style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
                 {formatMoney(item.amount, base)}
               </span>

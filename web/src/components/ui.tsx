@@ -142,21 +142,46 @@ export function Skeleton({ height = 16, width = '100%', radius = 8 }: { height?:
   return <div className="skeleton" style={{ height, width, borderRadius: radius }} />;
 }
 
-export function CategoryDot({ color, icon, size = 36 }: { color: string; icon: string; size?: number }) {
+/**
+ * Иконка категории.
+ *
+ * Цвет уходит в CSS-переменную, а не в inline-стиль фона: тёмной теме нужен
+ * тот же цвет, подмешанный с белым, и решать это в разметке значило бы
+ * дублировать тему в JavaScript.
+ */
+export function CategoryDot({ color, icon, size = 38 }: { color: string; icon: string; size?: number }) {
   return (
     <span
       className="cat-dot"
-      style={{ width: size, height: size, background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
+      style={{ width: size, height: size, ['--cat' as string]: color }}
     >
-      <Icon name={icon} size={size * 0.52} />
+      <Icon name={icon} size={size * 0.5} />
     </span>
   );
 }
 
-export function ProgressBar({ value, tone }: { value: number; tone: 'ok' | 'warn' | 'over' | 'goal' }) {
+/**
+ * Шкала из штрихов — фирменный приём интерфейса.
+ *
+ * Полоса набрана вертикальными штрихами: пройденная часть цветная, остаток
+ * бледный. Штрихи делят полосу на доли, которые пересчитываются глазом,
+ * чего сплошная заливка не даёт.
+ *
+ * `color` красит шкалу цветом категории — иначе карточка лимитов
+ * оказывалась залита одним акцентом сверху донизу, и четыре разных бюджета
+ * читались как одна большая полоса. Предупреждение и превышение цвет
+ * категории перебивают: там цвет обязан значить состояние, а не статью.
+ */
+export function ProgressBar({
+  value, tone, color,
+}: { value: number; tone: 'ok' | 'warn' | 'over' | 'goal'; color?: string }) {
+  const pct = Math.min(100, Math.max(0, value));
   return (
-    <div className={`progress progress--${tone}`}>
-      <div className="progress__fill" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
+    <div className={`progress progress--${tone}`} role="progressbar"
+         style={color ? { ['--bar' as string]: color } : undefined}
+         aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+      <div className="progress__track" />
+      <div className="progress__fill" style={{ width: `${pct}%` }} />
     </div>
   );
 }
