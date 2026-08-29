@@ -682,3 +682,64 @@
     transition-delay: 0ms !important;
   }
 }
+
+/* ══ Переключатель бюджетов ═════════════════════════════════════════════
+   Стоит на месте прежней кнопки, которая вела в настройки — то есть туда же,
+   куда пункт «Настройки» двумя строками ниже. Шеврон обещает список,
+   поэтому список и открывается.                                          */
+
+.budget-current,
+.budget-switch__button {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 9px 10px; margin-bottom: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--rule);
+  background: var(--slip);
+  font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em;
+  text-align: left;
+}
+.budget-current { color: var(--ink); }
+.budget-current span,
+.budget-switch__name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.budget-switch { position: relative; }
+.budget-switch__button {
+  transition: border-color var(--dur-fast) var(--ease-soft),
+              background var(--dur-fast) var(--ease-soft);
+}
+.budget-switch__button:hover { border-color: var(--rule-strong); background: var(--slip-2); }
+
+.budget-switch__menu {
+  position: absolute; z-index: 40;
+  top: calc(100% - 2px); left: 0; right: 0;
+  display: flex; flex-direction: column;
+  padding: 4px;
+  background: var(--slip);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  animation: rise var(--dur-fast) var(--ease);
+}
+.budget-switch__item {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 8px 9px; border-radius: var(--radius-sm);
+  text-align: left; color: var(--ink); font-size: 13.5px;
+  transition: background var(--dur-fast) var(--ease-soft);
+}
+.budget-switch__item:hover { background: var(--slip-2); }
+.budget-switch__item.is-current { color: var(--pen); font-weight: 600; }
+.budget-switch__item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.budget-switch__item-role {
+  font-family: var(--mono);
+  font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.budget-switch__item--muted {
+  color: var(--ink-2);
+  border-top: 1px solid var(--rule);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  margin-top: 4px; padding-top: 10px;
+}

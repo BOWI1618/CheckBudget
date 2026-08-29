@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { store } from '../data/store.js';
 import { useApp, useCanEdit } from '../data/hooks.js';
@@ -65,14 +65,7 @@ export function Layout({
           CheckBudget
         </div>
 
-        <button className="sidebar__item" style={{ marginBottom: 8 }}
-                onClick={() => navigate('/settings')}>
-          <Icon name="wallet" size={18} />
-          <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {app.data?.budget.name ?? 'Бюджет'}
-          </span>
-          <Icon name="chevronDown" size={15} />
-        </button>
+        <BudgetSwitcher />
 
         {SIDEBAR.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === '/'}
@@ -143,6 +136,94 @@ export function Layout({
       </nav>
 
       <Toasts />
+    </div>
+  );
+}
+
+/**
+ * Переключатель бюджетов.
+ *
+ * Раньше на этом месте была кнопка с шевроном, которая вела в настройки —
+ * то есть в то же место, что и пункт «Настройки» двумя строками ниже.
+ * Шеврон обещает список, и теперь он его открывает: между личным
+ * и семейным бюджетом переключаются отсюда, а не через отдельный экран.
+ *
+ * Если бюджет один, список не нужен — остаётся просто подпись.
+ */
+function BudgetSwitcher() {
+  const app = useApp();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const current = app.budgets.find((b) => b.id === app.currentBudgetId);
+  const name = current?.name ?? app.data?.budget.name ?? 'Бюджет';
+
+  if (app.budgets.length < 2) {
+    return (
+      <div className="budget-current">
+        <Icon name="wallet" size={17} />
+        <span>{name}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="budget-switch" ref={ref}>
+      <button
+        className="budget-switch__button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <Icon name="wallet" size={17} />
+        <span className="budget-switch__name">{name}</span>
+        <Icon name="chevronDown" size={14} />
+      </button>
+
+      {open && (
+        <div className="budget-switch__menu" role="menu">
+          {app.budgets.map((budget) => (
+            <button
+              key={budget.id}
+              role="menuitem"
+              className={`budget-switch__item ${budget.id === app.currentBudgetId ? 'is-current' : ''}`}
+              onClick={() => {
+                setOpen(false);
+                if (budget.id !== app.currentBudgetId) void store.selectBudget(budget.id);
+              }}
+            >
+              <span className="budget-switch__item-name">{budget.name}</span>
+              <span className="budget-switch__item-role">
+                {budget.role === 'owner' ? 'владелец'
+                  : budget.role === 'editor' ? 'участник' : 'наблюдатель'}
+              </span>
+              {budget.id === app.currentBudgetId && <Icon name="check" size={15} />}
+            </button>
+          ))}
+          <button
+            role="menuitem"
+            className="budget-switch__item budget-switch__item--muted"
+            onClick={() => { setOpen(false); navigate('/settings'); }}
+          >
+            Создать бюджет
+          </button>
+        </div>
+      )}
     </div>
   );
 }
