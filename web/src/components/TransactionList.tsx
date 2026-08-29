@@ -1,16 +1,38 @@
-import { Fragment, useMemo } from 'react';
+import { useMemo } from 'react';
 import { formatMoney, type Transaction } from '@checkbudget/shared';
 import { useApp, useLookups } from '../data/hooks.js';
 import { CategoryDot } from './ui.js';
 import { Icon } from './Icon.js';
 import { formatDay } from '../lib/dates.js';
 
+/**
+ * Операции таблицей.
+ *
+ * В семейном бюджете у строки пять признаков — когда, что, откуда, кто
+ * и сколько, — и все пять сравниваются между строками: «кто это потратил»
+ * читается только в колонке, а подписью под названием не читается вовсе.
+ *
+ * На узком экране колонки «когда», «счёт» и «кто» прячутся и собираются
+ * в подпись под названием: на телефоне сравнивать всё равно нечем, зато
+ * место есть только под два столбца.
+ */
 export function TransactionList({
-  items, onSelect, emptyState,
-}: { items: Transaction[]; onSelect?: (tx: Transaction) => void; emptyState?: React.ReactNode }) {
+  items, onSelect, emptyState, compact,
+}: {
+  items: Transaction[];
+  onSelect?: (tx: Transaction) => void;
+  emptyState?: React.ReactNode;
+  /** Узкая колонка: колонки складываются в подпись независимо от ширины окна. */
+  compact?: boolean;
+}) {
   const { categoryById, accountById } = useLookups();
   const app = useApp();
   const baseCurrency = app.data?.budget.baseCurrency ?? 'RUB';
+
+  const memberById = useMemo(
+    () => new Map((app.data?.members ?? []).map((m) => [m.userId, m.displayName])),
+    [app.data?.members],
+  );
 
   const groups = useMemo(() => {
     const byDay = new Map<string, Transaction[]>();
@@ -25,23 +47,35 @@ export function TransactionList({
   if (items.length === 0) return <>{emptyState}</>;
 
   return (
-    <div>
+    <table className={`txtable ${compact ? 'txtable--compact' : ''}`}>
+      <thead>
+        <tr>
+          <th className="txtable__hide-sm">Когда</th>
+          <th>Категория</th>
+          <th className="txtable__hide-sm">Комментарий</th>
+          <th className="txtable__hide-sm">Счёт</th>
+          <th className="txtable__hide-sm">Кто</th>
+          <th>Сумма</th>
+        </tr>
+      </thead>
+
       {groups.map(([day, dayItems]) => {
-        // Итог дня считается в базовой валюте: складывать разные валюты нельзя,
-        // поэтому берутся только конвертированные суммы.
+        // Итог дня считается в базовой валюте: складывать разные валюты
+        // нельзя, поэтому берутся только конвертированные суммы.
         const total = dayItems.reduce((sum, tx) => {
           if (tx.type === 'transfer' || tx.baseAmountMinor === null) return sum;
           return sum + (tx.type === 'income' ? tx.baseAmountMinor : -tx.baseAmountMinor);
         }, 0);
 
         return (
-          <Fragment key={day}>
-            <div className="tx-day">
-              {formatDay(day)}
-              <span className={`money ${total < 0 ? 'tone-muted' : 'tone-income'}`}>
+          <tbody key={day}>
+            <tr className="txtable__day">
+              <td colSpan={5}>{formatDay(day)}</td>
+              <td className={total > 0 ? 'tone-income' : ''}>
                 {total === 0 ? '' : formatMoney(total, baseCurrency, { sign: total > 0 })}
-              </span>
-            </div>
+              </td>
+            </tr>
+
             {dayItems.map((tx) => {
               const category = tx.categoryId ? categoryById.get(tx.categoryId) : null;
               const account = accountById.get(tx.accountId);
@@ -52,55 +86,62 @@ export function TransactionList({
               const title = tx.type === 'transfer'
                 ? `${account?.name ?? '—'} → ${counter?.name ?? '—'}`
                 : category?.name ?? 'Без категории';
-
-              const sub = [tx.note, tx.type === 'transfer' ? null : account?.name]
-                .filter(Boolean).join(' · ');
-
+              const who = memberById.get(tx.createdBy) ?? '—';
               const showsOriginal = tx.currency !== baseCurrency;
 
               return (
-                <button
+                <tr
                   key={tx.id}
-                  className={`tx ${pending ? 'is-pending' : ''} ${highlighted ? 'is-highlighted' : ''}`}
+                  className={`${onSelect ? 'is-clickable' : ''} ${pending ? 'is-pending' : ''} ${highlighted ? 'is-highlighted' : ''}`}
                   onClick={() => onSelect?.(tx)}
                 >
-                  {tx.type === 'transfer'
-                    ? <CategoryDot color="#64748b" icon="arrows" />
-                    : <CategoryDot color={category?.color ?? 'var(--cat-slate)'} icon={category?.icon ?? 'tag'} />}
+                  <td className="txtable__hide-sm">{tx.occurredOn.slice(8, 10)}.{tx.occurredOn.slice(5, 7)}</td>
 
-                  <span className="tx__body">
-                    <span className="tx__title">{title}</span>
-                    {sub && <span className="tx__sub">{sub}</span>}
-                  </span>
+                  <td>
+                    <span className="txtable__name">
+                      {tx.type === 'transfer'
+                        ? <CategoryDot color="var(--cat-stone)" icon="arrows" size={28} />
+                        : <CategoryDot color={category?.color ?? 'var(--cat-stone)'} icon={category?.icon ?? 'tag'} size={28} />}
+                      <span style={{ minWidth: 0 }}>
+                        {title}
+                        {/* Скрытые на телефоне колонки собираются сюда. */}
+                        <span className="txtable__meta">
+                          {[tx.note, account?.name, who].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    </span>
+                  </td>
 
-                  <span>
+                  <td className="txtable__hide-sm">{tx.note || '—'}</td>
+                  <td className="txtable__hide-sm">{account?.name ?? '—'}</td>
+                  <td className="txtable__hide-sm">{who}</td>
+
+                  <td className="txtable__amount">
                     {/* Расход набран основным тоном, а не красным: в приложении
-                        для контроля расходов красной была бы почти каждая строка,
-                        и цвет перестал бы что-либо сообщать. Знак «−» отличает
-                        расход не хуже, а красный остаётся за превышением лимита
-                        и минусом на счёте. */}
-                    <span className={`tx__amount money ${
-                      tx.type === 'income' ? 'tone-income' : tx.type === 'transfer' ? 'tone-muted' : ''
-                    }`}>
+                        для контроля расходов красной была бы почти каждая
+                        строка, и цвет перестал бы что-либо сообщать. */}
+                    <span className={tx.type === 'income' ? 'tone-income' : ''}>
                       {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
                       {formatMoney(tx.amountMinor, tx.currency)}
                     </span>
                     {/* Исходная сумма всегда видна как есть; в базовой валюте —
                         справочно, по замороженному курсу операции. */}
                     {showsOriginal && tx.baseAmountMinor !== null && (
-                      <span className="tx__orig tnum">≈ {formatMoney(tx.baseAmountMinor, baseCurrency)}</span>
+                      <span className="txtable__note">≈ {formatMoney(tx.baseAmountMinor, baseCurrency)}</span>
                     )}
                     {showsOriginal && tx.baseAmountMinor === null && (
-                      <span className="tx__orig">нет курса</span>
+                      <span className="txtable__note">нет курса</span>
                     )}
-                    {pending && <span className="tx__orig"><Icon name="clock" size={11} /> отправляется</span>}
-                  </span>
-                </button>
+                    {pending && (
+                      <span className="txtable__note"><Icon name="clock" size={11} /> отправляется</span>
+                    )}
+                  </td>
+                </tr>
               );
             })}
-          </Fragment>
+          </tbody>
         );
       })}
-    </div>
+    </table>
   );
 }

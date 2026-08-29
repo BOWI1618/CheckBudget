@@ -7,25 +7,27 @@ import { Icon } from '../components/Icon.js';
 import { Button } from '../components/ui.js';
 import { formatPeriod, shiftPeriod, currentPeriod } from '../lib/dates.js';
 
-/** Пять пунктов — предел для нижней навигации: дальше цели мельче пальца. */
+/**
+ * Нижняя навигация: четыре раздела и ввод расхода посередине.
+ *
+ * Кнопка ввода стоит В РЯДУ, а не висит над ним: плавающая кнопка
+ * закрывала собой последнюю строку списка операций.
+ */
 const TABS = [
-  { to: '/', icon: 'home2', label: 'Главная' },
+  { to: '/', icon: 'home2', label: 'Сводка' },
   { to: '/transactions', icon: 'list', label: 'Операции' },
-  { to: '/analytics', icon: 'chart', label: 'Аналитика' },
-  { to: '/budgets', icon: 'target', label: 'Бюджеты' },
+  { to: '/analytics', icon: 'chart', label: 'Отчёты' },
   { to: '/more', icon: 'dots', label: 'Ещё' },
 ];
 
-/** На десктопе места хватает на все разделы сразу — «Ещё» не нужно. */
-const SIDEBAR = [
-  { to: '/', icon: 'home2', label: 'Главная' },
-  { to: '/transactions', icon: 'list', label: 'Операции' },
-  { to: '/analytics', icon: 'chart', label: 'Аналитика' },
-  { to: '/budgets', icon: 'target', label: 'Бюджеты' },
-  { to: '/accounts', icon: 'wallet', label: 'Счета' },
-  { to: '/categories', icon: 'tag', label: 'Категории' },
-  { to: '/members', icon: 'users', label: 'Участники' },
-  { to: '/settings', icon: 'settings', label: 'Настройки' },
+/** На десктопе разделы — таблетки в шапке. Остальное живёт в «Ещё». */
+const TOPNAV = [
+  { to: '/', label: 'Сводка' },
+  { to: '/transactions', label: 'Операции' },
+  { to: '/analytics', label: 'Аналитика' },
+  { to: '/budgets', label: 'Лимиты' },
+  { to: '/accounts', label: 'Счета' },
+  { to: '/more', label: 'Ещё' },
 ];
 
 const PERIODLESS = ['/accounts', '/categories', '/members', '/settings', '/more'];
@@ -56,62 +58,57 @@ export function Layout({
     return () => document.removeEventListener('keydown', onKey);
   }, [onAdd, canEdit, navigate]);
 
-  const title = SIDEBAR.find((s) => s.to === location.pathname)?.label ?? 'Ещё';
-
   return (
     <div className="shell">
-      <aside className="sidebar">
-        <div className="sidebar__brand">
-          <Icon name="chart" size={22} />
-          CheckBudget
-        </div>
+      <div className="board">
+        <header className="topnav">
+          <span className="topnav__brand">
+            <span className="topnav__mark"><Icon name="chart" size={20} /></span>
+            CheckBudget
+          </span>
 
-        <BudgetSwitcher />
+          <nav className="topnav__nav">
+            {TOPNAV.map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.to === '/'}
+                       className={({ isActive }) => `topnav__item ${isActive ? 'is-active' : ''}`}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
 
-        {SIDEBAR.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.to === '/'}
-                   className={({ isActive }) => `sidebar__item ${isActive ? 'is-active' : ''}`}>
-            <Icon name={item.icon} size={18} />
-            {item.label}
-          </NavLink>
-        ))}
+          <div className="topnav__spacer" />
 
-        {canEdit && (
-          <div style={{ padding: '12px 4px 0' }}>
-            <Button variant="primary" icon="plus" full onClick={onAdd}>Добавить</Button>
-          </div>
-        )}
-
-        <div className="sidebar__foot">
-          <ConnectionBadge />
-        </div>
-      </aside>
-
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <header className="topbar">
-          {showPeriod ? (
-            <div className="row" style={{ gap: 2 }}>
-              <Button variant="ghost" size="sm" icon="chevronLeft" title="Предыдущий месяц"
-                      onClick={() => onPeriodChange(shiftPeriod(period, -1))} />
-              <button className="period-picker" onClick={() => onPeriodChange(currentPeriod())}
+          {showPeriod && (
+            <div className="period">
+              <button className="period__arrow" title="Предыдущий месяц"
+                      onClick={() => onPeriodChange(shiftPeriod(period, -1))}>
+                <Icon name="chevronLeft" size={16} />
+              </button>
+              <button className="period__label" onClick={() => onPeriodChange(currentPeriod())}
                       title="Вернуться к текущему месяцу">
                 {formatPeriod(period)}
               </button>
-              <Button variant="ghost" size="sm" icon="chevronRight" title="Следующий месяц"
+              <button className="period__arrow" title="Следующий месяц"
                       disabled={period >= currentPeriod()}
-                      onClick={() => onPeriodChange(shiftPeriod(period, 1))} />
+                      onClick={() => onPeriodChange(shiftPeriod(period, 1))}>
+                <Icon name="chevronRight" size={16} />
+              </button>
             </div>
-          ) : (
-            <h1 className="topbar__title">{title}</h1>
           )}
 
-          <div className="topbar__spacer" />
-          <ConnectionBadge compact />
+          <BudgetSwitcher />
+          <ConnectionBadge />
+
+          {canEdit && (
+            <span className="topnav__add">
+              <Button variant="primary" icon="plus" onClick={onAdd}>Добавить</Button>
+            </span>
+          )}
         </header>
 
-        <main className="shell__main">
+        <main className="board__main">
           {app.connection === 'offline' && (
-            <div className="banner banner--offline" style={{ marginBottom: 12 }}>
+            <div className="banner banner--offline">
               <Icon name="wifiOff" size={16} />
               Нет соединения.{app.queueSize > 0
                 && ` ${countOf(app.queueSize, ['изменение', 'изменения', 'изменений'])} отправим при подключении.`}
@@ -121,17 +118,25 @@ export function Layout({
         </main>
       </div>
 
-      {canEdit && (
-        <button className="fab" onClick={onAdd} aria-label="Добавить операцию">
-          <Icon name="plus" size={26} strokeWidth={2.2} />
-        </button>
-      )}
-
       <nav className="tabbar">
-        {TABS.map((tab) => (
+        {TABS.slice(0, 2).map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.to === '/'}
                    className={({ isActive }) => `tabbar__item ${isActive ? 'is-active' : ''}`}>
-            <Icon name={tab.icon} size={21} />
+            <Icon name={tab.icon} size={20} />
+            {tab.label}
+          </NavLink>
+        ))}
+
+        {canEdit && (
+          <button className="tabbar__add" onClick={onAdd} aria-label="Добавить операцию">
+            <Icon name="plus" size={24} strokeWidth={2.2} />
+          </button>
+        )}
+
+        {TABS.slice(2).map((tab) => (
+          <NavLink key={tab.to} to={tab.to} end={tab.to === '/'}
+                   className={({ isActive }) => `tabbar__item ${isActive ? 'is-active' : ''}`}>
+            <Icon name={tab.icon} size={20} />
             {tab.label}
           </NavLink>
         ))}
@@ -175,12 +180,16 @@ function BudgetSwitcher() {
   const current = app.budgets.find((b) => b.id === app.currentBudgetId);
   const name = current?.name ?? app.data?.budget.name ?? 'Бюджет';
 
+  // Плашка называет не только бюджет, но и его состав: в семейном бюджете
+  // важнее знать, чьи это деньги, чем как бюджет назван.
+  const who = (app.data?.members ?? []).map((m) => m.displayName).join(' и ');
+
   if (app.budgets.length < 2) {
     return (
-      <div className="budget-current">
-        <Icon name="wallet" size={17} />
-        <span>{name}</span>
-      </div>
+      <span className="who">
+        <span className="who__dot" />
+        {who || name}
+      </span>
     );
   }
 
@@ -192,8 +201,8 @@ function BudgetSwitcher() {
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <Icon name="wallet" size={17} />
-        <span className="budget-switch__name">{name}</span>
+        <span className="who__dot" />
+        <span className="budget-switch__name">{who || name}</span>
         <Icon name="chevronDown" size={14} />
       </button>
 
@@ -230,19 +239,11 @@ function BudgetSwitcher() {
   );
 }
 
-function ConnectionBadge({ compact }: { compact?: boolean }) {
+function ConnectionBadge() {
   const app = useApp();
-  if (app.connection === 'online' && app.queueSize === 0) {
-    return compact ? null : (
-      <span className="list-row__sub" style={{ padding: '0 8px' }}>
-        <span style={{
-          display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
-          background: 'var(--income)', marginRight: 7,
-        }} />
-        Синхронизировано
-      </span>
-    );
-  }
+  // Пока всё синхронизировано, сообщать не о чем: значок появляется только
+  // когда есть о чём предупредить.
+  if (app.connection === 'online' && app.queueSize === 0) return null;
   return (
     <span className="badge" style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>
       {app.connection === 'connecting' ? 'подключение…'

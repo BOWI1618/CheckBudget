@@ -29,17 +29,29 @@ export function AuthScreen() {
   return (
     <div className="auth">
       <div className="auth__box">
-        <div className="auth__brand">
-          <Icon name="chart" size={26} />
-          CheckBudget
+        {/* Слева — обещание, справа — форма. Экран входа единственный, где
+            человек ещё ничего о приложении не знает: одна строка о том,
+            что оно делает, стоит здесь больше, чем красивая рамка. */}
+        <div>
+          <div className="auth__brand">
+            <span className="topnav__mark"><Icon name="chart" size={20} /></span>
+            CheckBudget
+          </div>
+          <h1 className="auth__pitch">Бюджет на двоих,<br />который считает сам</h1>
+          <p className="auth__lead">
+            Расход добавляется в три касания на телефоне и появляется
+            у второго участника сразу — без обновления страницы и без потерь
+            при плохой связи.
+          </p>
+          <ul className="auth__points">
+            <li><Icon name="check" size={16} />Мультивалютность с замороженным курсом операции</li>
+            <li><Icon name="check" size={16} />Работает офлайн, отправляет изменения при подключении</li>
+            <li><Icon name="check" size={16} />Роли: владелец, участник, наблюдатель</li>
+          </ul>
         </div>
-        <p className="auth__lead">
-          Учёт личного и семейного бюджета. Работает на телефоне и компьютере
-          одновременно — изменения появляются на всех устройствах сразу.
-        </p>
 
-        <form className="card card--pad stack" onSubmit={submit}>
-          <div className="segmented">
+        <form className="auth__form" onSubmit={submit}>
+          <div className="segmented segmented--full">
             <button type="button" className={`segmented__item ${mode === 'login' ? 'is-active' : ''}`}
                     onClick={() => { setMode('login'); setError(null); }}>
               Вход

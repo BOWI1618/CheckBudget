@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { formatMoney } from '@checkbudget/shared';
+import { formatMoney, plural } from '@checkbudget/shared';
 import { useApp, useLookups } from '../data/hooks.js';
-import { Card, CardTitle, EmptyState, Segmented } from '../components/ui.js';
-import { Donut, Legend, GroupedBars, AreaLine, type Slice } from '../components/charts.js';
+import { Card, EmptyState, Segmented } from '../components/ui.js';
+import { RankedBars, StackedMonths, AreaLine, type Slice } from '../components/charts.js';
 import { CategoryDot } from '../components/ui.js';
 import { periodBounds, formatPeriod, lastMonths, shortMonth, shiftPeriod, formatShortDate } from '../lib/dates.js';
 
@@ -11,7 +11,7 @@ type Kind = 'expense' | 'income';
 export function AnalyticsScreen({ period }: { period: string }) {
   const app = useApp();
   const data = app.data;
-  const { categoryById } = useLookups();
+  const { categoryById, accountById } = useLookups();
   const [kind, setKind] = useState<Kind>('expense');
 
   const base = data?.budget.baseCurrency ?? 'RUB';
@@ -19,48 +19,72 @@ export function AnalyticsScreen({ period }: { period: string }) {
   const analysis = useMemo(() => {
     if (!data) return null;
     const { from, to } = periodBounds(period);
+    const previous = shiftPeriod(period, -1);
+    const prevBounds = periodBounds(previous);
+
+    // Сравнение по статьям возможно только если прошлый месяц действительно
+    // загружен. Считать по пустому окну значило бы показать «−100%» там,
+    // где данных просто нет, — а это хуже, чем не показать ничего.
+    const priorLoaded = data.range.from <= prevBounds.from;
 
     const inRange = (iso: string, a: string, b: string) => iso >= a && iso <= b;
 
     let current = 0;
-    // Прошлый месяц берётся из готовых итогов: он может лежать за границей
-    // загруженного окна операций, и подсчёт по сырым строкам дал бы ноль.
-    const previousTotals = data.monthly.find((r) => r.month === shiftPeriod(period, -1));
+    let count = 0;
+    const previousTotals = data.monthly.find((r) => r.month === previous);
     const prior = kind === 'expense'
       ? previousTotals?.expenseMinor ?? 0
       : previousTotals?.incomeMinor ?? 0;
+
     const byRoot = new Map<string, number>();
+    const byRootPrior = new Map<string, number>();
     const byDay = new Map<string, number>();
-    const largest: Array<{ id: string; amount: number; label: string; color: string; icon: string; day: string }> = [];
+    const largest: Array<{
+      id: string; amount: number; label: string; color: string; icon: string;
+      day: string; note: string; account: string;
+    }> = [];
 
     for (const tx of data.transactions) {
       if (tx.type !== kind || tx.baseAmountMinor === null) continue;
+      const category = tx.categoryId ? categoryById.get(tx.categoryId) : null;
+      const rootId = category?.parentId ?? category?.id;
+
+      if (priorLoaded && inRange(tx.occurredOn, prevBounds.from, prevBounds.to) && rootId) {
+        byRootPrior.set(rootId, (byRootPrior.get(rootId) ?? 0) + tx.baseAmountMinor);
+        continue;
+      }
       if (!inRange(tx.occurredOn, from, to)) continue;
 
       current += tx.baseAmountMinor;
+      count += 1;
       byDay.set(tx.occurredOn, (byDay.get(tx.occurredOn) ?? 0) + tx.baseAmountMinor);
-
-      const category = tx.categoryId ? categoryById.get(tx.categoryId) : null;
-      const rootId = category?.parentId ?? category?.id;
       if (rootId) byRoot.set(rootId, (byRoot.get(rootId) ?? 0) + tx.baseAmountMinor);
 
       largest.push({
         id: tx.id, amount: tx.baseAmountMinor, day: tx.occurredOn,
         label: category?.name ?? 'Без категории',
-        color: category?.color ?? 'var(--cat-slate)',
+        color: category?.color ?? 'var(--cat-stone)',
         icon: category?.icon ?? 'tag',
+        note: tx.note ?? '',
+        account: accountById.get(tx.accountId)?.name ?? '—',
       });
     }
 
-    const slices: Slice[] = [...byRoot.entries()]
+    const slices: Array<Slice & { delta: number | null }> = [...byRoot.entries()]
       .map(([id, value]) => {
         const category = categoryById.get(id);
-        return { id, value, label: category?.name ?? 'Прочее', color: category?.color ?? 'var(--cat-slate)' };
+        const was = byRootPrior.get(id);
+        return {
+          id, value,
+          label: category?.name ?? 'Прочее',
+          color: category?.color ?? 'var(--cat-stone)',
+          delta: priorLoaded && was ? Math.round(((value - was) / was) * 100) : null,
+        };
       })
       .sort((a, b) => b.value - a.value);
 
     // Накопительная кривая за месяц отвечает на вопрос «укладываюсь ли я
-    // в темп», на который обычный столбчатый график не отвечает.
+    // в темп», на который столбчатый график не отвечает.
     const days: string[] = [];
     const cumulative: number[] = [];
     let running = 0;
@@ -79,42 +103,54 @@ export function AnalyticsScreen({ period }: { period: string }) {
       expense: totals.get(m)?.expenseMinor ?? 0,
     }));
 
+    // «Что изменилось сильнее всего» — две статьи с наибольшим сдвигом.
+    // Именно это ищут глазами в таблице сравнения, и это можно назвать
+    // словами вместо того, чтобы заставлять искать.
+    const movers = slices
+      .filter((s) => s.delta !== null && Math.abs(s.delta) >= 5)
+      .sort((a, b) => Math.abs(b.delta!) - Math.abs(a.delta!))
+      .slice(0, 2);
+
     return {
-      current, prior, slices, months, days, cumulative,
+      current, prior, count, slices, months, days, cumulative, movers, priorLoaded, previous,
       largest: largest.sort((a, b) => b.amount - a.amount).slice(0, 5),
     };
-  }, [data, period, kind, categoryById]);
+  }, [data, period, kind, categoryById, accountById]);
 
   if (!data || !analysis) return null;
 
   const delta = analysis.prior > 0
     ? Math.round(((analysis.current - analysis.prior) / analysis.prior) * 100)
     : null;
+  const monthLabel = formatPeriod(period).toLowerCase();
+  const days = Math.max(1, Number(periodBounds(period).to.slice(8, 10)));
 
   return (
     <div className="stack">
-      <Segmented<Kind>
-        value={kind} onChange={setKind}
-        options={[
-          { value: 'expense', label: 'Расходы', tone: 'expense' },
-          { value: 'income', label: 'Доходы', tone: 'income' },
-        ]}
-      />
+      <div className="row">
+        <Segmented<Kind>
+          value={kind} onChange={setKind}
+          options={[
+            { value: 'expense', label: 'Расходы', tone: 'expense' },
+            { value: 'income', label: 'Доходы', tone: 'income' },
+          ]}
+        />
+      </div>
 
-      <div className="grid-2">
+      <div className="grid-3">
         <Card className="kpi kpi--lead">
-          <span className="kpi__label">{formatPeriod(period)}</span>
-          {/* Сумма расходов набрана основным тоном: красный в этом интерфейсе
-              означает проблему, а не «это расходы». Цвет ушёл на соседнюю
-              карточку — там он отвечает на вопрос «стало хуже или лучше». */}
-          <span className={`kpi__value tnum ${kind === 'income' ? 'tone-income' : ''}`}>
-            {formatMoney(analysis.current, base)}
+          <span className="kpi__label">
+            {kind === 'expense' ? 'Расход' : 'Доход'} за {monthLabel}
+          </span>
+          <span className="kpi__value tnum">{formatMoney(analysis.current, base)}</span>
+          <span className="kpi__sub">
+            {analysis.count} {plural(analysis.count, ['операция', 'операции', 'операций'])}
+            {' · '}{formatMoney(Math.round(analysis.current / days), base)} в день
           </span>
         </Card>
+
         <Card className="kpi">
-          <span className="kpi__label">
-            Против {formatPeriod(shiftPeriod(period, -1)).toLowerCase()}
-          </span>
+          <span className="kpi__label">Против {formatPeriod(analysis.previous).toLowerCase()}</span>
           {/* Рост расходов — плохая новость, рост доходов — хорошая, поэтому
               одно и то же «+4%» красится по-разному. Цвет здесь несёт вывод,
               которого в самом числе нет. */}
@@ -122,70 +158,118 @@ export function AnalyticsScreen({ period }: { period: string }) {
             delta === null || delta === 0 ? ''
               : (delta > 0) === (kind === 'income') ? 'tone-income' : 'tone-expense'
           }`}>
-            {/* Тот же знак минуса, что и в суммах: «−», а не дефис. */}
             {delta === null ? '—' : `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}%`}
-            <span className="tone-muted" style={{ fontSize: 'var(--t-small)', fontWeight: 500, marginLeft: 8 }}>
-              {formatMoney(analysis.prior, base)}
-            </span>
           </span>
+          <span className="kpi__sub">
+            {analysis.prior > 0
+              ? `в ${formatPeriod(analysis.previous).toLowerCase()} было ${formatMoney(analysis.prior, base)}`
+              : 'сравнивать не с чем'}
+          </span>
+        </Card>
+
+        <Card className="kpi">
+          <span className="kpi__label">Что изменилось сильнее всего</span>
+          {analysis.movers.length === 0 ? (
+            <span className="kpi__sub" style={{ marginTop: 6 }}>
+              {analysis.priorLoaded ? 'Все статьи держатся прошлого месяца.'
+                : 'Прошлый месяц ещё не загружен — пролистайте period назад.'}
+            </span>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+              {analysis.movers.map((m) => (
+                <span key={m.id} className="row" style={{ gap: 8, fontSize: 'var(--t-small)' }}>
+                  <span style={{ flex: 1 }}>{m.label}</span>
+                  <strong className={`money ${
+                    (m.delta! > 0) === (kind === 'income') ? 'tone-income' : 'tone-expense'
+                  }`}>
+                    {m.delta! > 0 ? '+' : '−'}{Math.abs(m.delta!)}%
+                  </strong>
+                </span>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
-      <Card>
-        <CardTitle>Накопительно за месяц</CardTitle>
+      <Card className="card--pad">
+        <header className="card__head">
+          <h2 className="card__title">Накопительно за месяц</h2>
+          <span className="card__note">
+            пунктир — темп {formatPeriod(analysis.previous).toLowerCase()}; выше него значит тратим быстрее
+          </span>
+        </header>
         {analysis.current === 0 ? (
           <EmptyState icon="chart" title="Данных за период нет" />
         ) : (
-          /* Прошлый месяц задаёт равномерный темп: кривая выше пунктира —
-             тратится быстрее, чем месяцем раньше. Без опоры накопительная
-             кривая растёт всегда и сама по себе ни о чём не сообщает. */
           <AreaLine
             values={analysis.cumulative} labels={analysis.days} currency={base}
             color={kind === 'expense' ? 'var(--accent)' : 'var(--income)'}
             pace={analysis.prior}
-            paceLabel={`Темп ${formatPeriod(shiftPeriod(period, -1)).toLowerCase()}`}
+            paceLabel={`Темп ${formatPeriod(analysis.previous).toLowerCase()}`}
           />
         )}
       </Card>
 
-      <div className="grid-2 grid-2--wide">
-        <Card>
-          <CardTitle>По категориям</CardTitle>
+      <div className="grid-2 grid-2--lead">
+        <Card className="card--pad">
+          <header className="card__head">
+            <h2 className="card__title">По категориям</h2>
+            <span className="card__note">полосы в одном масштабе</span>
+          </header>
           {analysis.slices.length === 0 ? (
-            <EmptyState icon="tag" title="Нет операций за период" />
+            <EmptyState icon="chart" title="Нет операций за период" />
           ) : (
-            <div className="row" style={{ gap: 20, flexWrap: 'wrap' }}>
-              <Donut slices={analysis.slices.slice(0, 8)} currency={base} total={analysis.current} />
-              <div style={{ flex: 1, minWidth: 210 }}>
-                <Legend slices={analysis.slices.slice(0, 8)} currency={base} total={analysis.current} />
-              </div>
-            </div>
+            <RankedBars slices={analysis.slices} currency={base} total={analysis.current} />
           )}
         </Card>
 
-        <Card>
-          <CardTitle>Сравнение месяцев</CardTitle>
-          <GroupedBars points={analysis.months} currency={base} />
+        <Card className="card--pad">
+          <header className="card__head">
+            <h2 className="card__title">Полгода</h2>
+          </header>
+          <StackedMonths points={analysis.months} />
         </Card>
       </div>
 
-      <Card>
-        <CardTitle>Самые крупные {kind === 'expense' ? 'расходы' : 'поступления'}</CardTitle>
+      <Card className="card--pad">
+        <header className="card__head">
+          <h2 className="card__title">
+            Самые крупные {kind === 'expense' ? 'расходы' : 'поступления'}
+          </h2>
+          <span className="card__note">пять операций из {analysis.count}</span>
+        </header>
         {analysis.largest.length === 0 ? (
           <EmptyState icon="list" title="Нет операций за период" />
         ) : (
-          analysis.largest.map((item) => (
-            <div className="list-row" key={item.id}>
-              <CategoryDot color={item.color} icon={item.icon} size={32} />
-              <div className="list-row__body">
-                <div className="list-row__title">{item.label}</div>
-                <div className="list-row__sub">{formatShortDate(item.day)}</div>
-              </div>
-              <span className="money" style={{ fontSize: 'var(--t-base)', fontWeight: 600 }}>
-                {formatMoney(item.amount, base)}
-              </span>
-            </div>
-          ))
+          <table className="txtable">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Категория</th>
+                <th className="txtable__hide-sm">Комментарий</th>
+                <th className="txtable__hide-sm">Счёт</th>
+                <th>Сумма</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.largest.map((item) => (
+                <tr key={item.id}>
+                  <td>{formatShortDate(item.day)}</td>
+                  <td>
+                    <span className="txtable__name">
+                      <CategoryDot color={item.color} icon={item.icon} size={28} />
+                      {item.label}
+                    </span>
+                  </td>
+                  <td className="txtable__hide-sm">{item.note || '—'}</td>
+                  <td className="txtable__hide-sm">{item.account}</td>
+                  <td className="txtable__amount">
+                    {kind === 'expense' ? '−' : '+'}{formatMoney(item.amount, base)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </Card>
     </div>

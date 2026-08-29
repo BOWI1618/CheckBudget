@@ -26,7 +26,7 @@ export function Button({
 }: {
   children?: ReactNode;
   onClick?: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
   size?: 'sm' | 'md' | 'lg';
   type?: 'button' | 'submit';
   disabled?: boolean;
