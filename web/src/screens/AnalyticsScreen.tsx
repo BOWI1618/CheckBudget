@@ -134,12 +134,9 @@ export function AnalyticsScreen({ period }: { period: string }) {
         .slice(0, 3)
       : [];
 
-    // Сумма всех сдвигов и есть разница месяцев — этим карточка
-    // и объясняет, ОТКУДА взялись проценты в соседнем показателе.
-    const movedTotal = current - prior;
 
     return {
-      current, prior, count, slices, months, days, cumulative, movers, movedTotal,
+      current, prior, count, slices, months, days, cumulative, movers,
       priorLoaded, previous,
       largest: largest.sort((a, b) => b.amount - a.amount).slice(0, 5),
     };
@@ -196,25 +193,20 @@ export function AnalyticsScreen({ period }: { period: string }) {
         </Card>
 
         <Card className="kpi">
-          <span className="kpi__label">Что изменилось против {periodGen(analysis.previous)}</span>
+          {/* Заголовок называет сравнение целиком, поэтому пояснения под ним
+              не нужно: сколько это в процентах и сколько было, говорит
+              соседняя карточка. Три строки без подводки читаются быстрее,
+              чем две строки с абзацем перед ними. */}
+          <span className="kpi__label">Разница с прошлым месяцем</span>
 
           {analysis.movers.length === 0 ? (
             <span className="kpi__sub" style={{ marginTop: 6 }}>
               {analysis.priorLoaded
-                ? 'Ни одна статья не сдвинулась заметно — месяцы похожи.'
+                ? 'Ни одна статья не сдвинулась заметно.'
                 : 'Прошлый месяц ещё не загружен — пролистайте период назад стрелкой в шапке.'}
             </span>
           ) : (
-            <>
-              {/* Сумма всех сдвигов и есть разница месяцев: карточка
-                  объясняет, откуда взялся процент в соседнем показателе. */}
-              <span className="kpi__sub">
-                {kind === 'expense' ? 'Расход' : 'Доход'}
-                {analysis.movedTotal >= 0 ? ' вырос на ' : ' упал на '}
-                {formatMoney(Math.abs(analysis.movedTotal), base)}. Больше всего сдвинулись:
-              </span>
-
-              <ul className="movers">
+            <ul className="movers">
                 {analysis.movers.map((m) => {
                   const good = (m.moved > 0) === (kind === 'income');
                   return (
@@ -237,8 +229,7 @@ export function AnalyticsScreen({ period }: { period: string }) {
                     </li>
                   );
                 })}
-              </ul>
-            </>
+            </ul>
           )}
         </Card>
       </div>
