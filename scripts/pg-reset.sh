@@ -12,9 +12,10 @@ CONTAINER="${PG_CONTAINER:-checkbudget-pg}"
 DB="${PG_DB:-checkbudget}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-run_as() {  # run_as <пользователь> <файл|->
+run_as() {  # run_as <пользователь> <пароль>
   docker exec -i -e PGPASSWORD="$2" "$CONTAINER" \
-    psql -v ON_ERROR_STOP=1 -q -U "$1" -h 127.0.0.1 -d "$DB"
+    psql -v ON_ERROR_STOP=1 -q -U "$1" -h 127.0.0.1 -d "$DB" \
+      -v owner_pw=ownerpass -v app_pw=apppass -v repl_pw=replpass
 }
 
 # Роли живут в кластере, а не в схеме, поэтому чистим их отдельно.

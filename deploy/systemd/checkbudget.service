@@ -1,0 +1,46 @@
+[Unit]
+Description=CheckBudget API
+Documentation=https://github.com/BOWI1618/CheckBudget
+# Postgres поднимается локально: без неё старт бессмысленен, но After
+# не гарантирует готовность — приложение переживает недоступность базы
+# и переподключается, поэтому Requires не ставим.
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=checkbudget
+Group=checkbudget
+WorkingDirectory=/opt/checkbudget
+EnvironmentFile=/etc/checkbudget/checkbudget.env
+ExecStart=/usr/bin/node /opt/checkbudget/server/dist/server.js
+Restart=always
+RestartSec=3
+
+# Журнал уходит в journald: отдельный файл логов пришлось бы ротировать
+# самим, а journalctl это уже умеет.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=checkbudget
+
+# Ограничения. Приложение не пишет никуда, кроме журнала: база внешняя,
+# файлов оно не создаёт. Любая попытка записи — признак того, что что-то
+# идёт не по плану, и лучше узнать об этом сразу.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+# 2 ГБ на всё: если Node вырос выше 512 МБ, это утечка, а не нагрузка
+# на 285 операциях. Пусть падает и перезапускается, а не съедает своп.
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

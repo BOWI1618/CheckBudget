@@ -1,0 +1,10 @@
+[Unit]
+Description=Бэкап базы CheckBudget
+Documentation=https://github.com/BOWI1618/CheckBudget
+
+[Service]
+Type=oneshot
+# От root: скрипту нужен sudo -u postgres, потому что FORCE RLS действует
+# и на владельца схемы, и выгрузка от его имени вышла бы пустой.
+User=root
+ExecStart=/usr/local/bin/checkbudget-backup

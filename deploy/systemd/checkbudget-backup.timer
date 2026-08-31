@@ -1,0 +1,12 @@
+[Unit]
+Description=Ночной бэкап базы CheckBudget
+
+[Timer]
+OnCalendar=*-*-* 04:20:00
+# Если сервер был выключен в 4:20, бэкап сделается при следующем старте,
+# а не пропустится молча.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
