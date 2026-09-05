@@ -56,6 +56,10 @@ find "$APP_DIR/web/dist" -type d -exec chmod 755 {} +
 find "$APP_DIR/web/dist" -type f -exec chmod 644 {} +
 
 say "Перезапускаю службу"
+# enable, а не только restart: без него служба не поднимется после
+# перезагрузки сервера. Проявляется это не при выкате, а через месяцы —
+# в первый же ребут, и выглядит как «сайт просто пропал».
+systemctl enable --quiet checkbudget
 systemctl restart checkbudget
 sleep 2
 systemctl is-active --quiet checkbudget || {
