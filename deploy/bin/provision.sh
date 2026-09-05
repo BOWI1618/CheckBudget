@@ -138,7 +138,26 @@ fi
 ln -sf "$SITE" /etc/nginx/sites-enabled/checkbudget
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
-systemctl reload nginx
+systemctl enable --quiet nginx
+systemctl restart nginx
+
+# Firewall. Правило добавляется, только если ufw УЖЕ включён: включать его
+# самому нельзя — если правило для SSH не заведено, команда обрывает
+# текущую сессию вместе с доступом к серверу.
+if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then
+  ufw allow 'Nginx Full' >/dev/null && echo "ufw: открыты 80 и 443"
+else
+  echo "ufw выключен или не установлен — правила не трогаю"
+fi
+
+# Проверка снаружи здесь невозможна, поэтому хотя бы изнутри: слушает ли
+# кто-нибудь 80-й порт. Закрытый снаружи порт — вторая по частоте причина
+# провала certbot после отсутствующей A-записи, и провайдер может резать
+# его своим firewall, до которого с сервера не дотянуться.
+ss -lntp 2>/dev/null | grep -q ':80 ' \
+  && echo "80-й порт слушается локально" \
+  || echo "ВНИМАНИЕ: 80-й порт локально не слушается — certbot не пройдёт"
+
 
 # ── systemd ───────────────────────────────────────────────────────────────
 say "Ставлю юниты systemd"
