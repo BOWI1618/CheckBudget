@@ -24,6 +24,9 @@ CREATE TABLE users (
   email         CITEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   display_name  TEXT NOT NULL,
+  -- NULL — адрес не подтверждён. Вход этим не блокируется намеренно:
+  -- иначе человек не попадёт к своим деньгам из-за проблем с почтой.
+  email_verified_at TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -504,9 +507,78 @@ CREATE POLICY invites_update ON budget_invites FOR UPDATE
 -- Настройки, сессии и ключи идемпотентности принадлежат одному человеку
 -- и никогда не должны читаться другим — даже при ошибке в коде.
 
+-- ── Подтверждение почты ──────────────────────────────────────────────────
+--
+-- Токен хранится ХЕШЕМ, как refresh-токен: утечка дампа не должна давать
+-- возможности подтвердить чужой адрес или увести аккаунт при смене email.
+CREATE TABLE email_verifications (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  -- Адрес хранится отдельно от users.email: подтверждение смены уходит
+  -- на НОВЫЙ адрес, и до подтверждения он не попадает в users — иначе
+  -- неудачная смена оставила бы вход на чужой почте.
+  email       CITEXT NOT NULL,
+  token_hash  TEXT NOT NULL UNIQUE,
+  purpose     TEXT NOT NULL CHECK (purpose IN ('signup','change')),
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used_at     TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_email_verifications_user ON email_verifications(user_id);
+
+-- ── Согласия с документами ───────────────────────────────────────────────
+--
+-- Пока приложение семейное, 152-ФЗ к нему не применяется (ст. 1 ч. 2).
+-- Таблица заведена заранее, потому что доказательство согласия невозможно
+-- восстановить задним числом: понадобятся дата, версия документа и адрес,
+-- а взять их будет неоткуда. Версия — часть ключа: изменилась политика,
+-- нужно новое согласие.
+CREATE TABLE user_consents (
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  document    TEXT NOT NULL CHECK (document IN ('terms','privacy')),
+  version     TEXT NOT NULL,
+  accepted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ip          TEXT,
+  PRIMARY KEY (user_id, document, version)
+);
+
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings FORCE ROW LEVEL SECURITY;
 CREATE POLICY settings_own ON user_settings FOR ALL
+  USING (user_id = app_user_id()) WITH CHECK (user_id = app_user_id());
+
+-- Подтверждение почты. Доступ даёт ЛИБО членство (свои строки), ЛИБО
+-- знание токена — ровно как у кодов приглашения.
+--
+-- Второе обязательно: по ссылке из письма человек приходит БЕЗ сессии,
+-- app.user_id не установлен, и политика «только свои» не отдала бы ни
+-- одной строки. Подтверждение молча отвечало бы «токен не найден» —
+-- на Postgres, при том что на SQLite всё работает.
+--
+-- Приложение кладёт хеш предъявленного токена в app.email_token_hash,
+-- и видимой становится ровно одна строка — та, чей хеш уже известен.
+ALTER TABLE email_verifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_verifications FORCE ROW LEVEL SECURITY;
+CREATE POLICY email_verifications_read ON email_verifications FOR SELECT
+  USING (
+    user_id = app_user_id()
+    OR token_hash = current_setting('app.email_token_hash', TRUE)
+  );
+CREATE POLICY email_verifications_insert ON email_verifications FOR INSERT
+  WITH CHECK (user_id = app_user_id());
+CREATE POLICY email_verifications_update ON email_verifications FOR UPDATE
+  USING (
+    user_id = app_user_id()
+    OR token_hash = current_setting('app.email_token_hash', TRUE)
+  )
+  WITH CHECK (
+    user_id = app_user_id()
+    OR token_hash = current_setting('app.email_token_hash', TRUE)
+  );
+
+ALTER TABLE user_consents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_consents FORCE ROW LEVEL SECURITY;
+CREATE POLICY user_consents_own ON user_consents FOR ALL
   USING (user_id = app_user_id()) WITH CHECK (user_id = app_user_id());
 
 ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;

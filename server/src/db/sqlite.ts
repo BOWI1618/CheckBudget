@@ -108,6 +108,10 @@ export class SqliteDatabase implements Database {
       sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
             ALTER TABLE users DROP COLUMN email_lower;`,
     },
+    // v4: подтверждение почты. Сами таблицы создаёт schema.sql (она
+    // идемпотентна), здесь только колонка в существующей users —
+    // ALTER TABLE в schema.sql выразить нельзя.
+    { version: 4, sql: 'ALTER TABLE users ADD COLUMN email_verified_at TEXT' },
   ];
 
   async migrate(): Promise<void> {

@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS users (
   email         TEXT NOT NULL,
   password_hash TEXT NOT NULL,           -- scrypt: N$r$p$salt$hash
   display_name  TEXT NOT NULL,
+  -- NULL — адрес не подтверждён. Вход этим не блокируется намеренно:
+  -- иначе человек не попадёт к своим деньгам из-за проблем с почтой.
+  email_verified_at TEXT,
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL
 );
@@ -265,3 +268,41 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
   PRIMARY KEY (key, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_idem_created ON idempotency_keys(created_at);
+
+-- ── Подтверждение почты ──────────────────────────────────────────────────
+--
+-- Токен хранится ХЕШЕМ, как refresh-токен: утечка дампа базы не должна
+-- давать возможности подтвердить чужой адрес или увести аккаунт при
+-- смене email.
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  -- Адрес хранится отдельно от users.email: подтверждение смены адреса
+  -- уходит на НОВЫЙ адрес, и до подтверждения он не должен попадать
+  -- в users — иначе неудачная смена оставила бы вход на чужой почте.
+  email       TEXT NOT NULL,
+  token_hash  TEXT NOT NULL UNIQUE,
+  purpose     TEXT NOT NULL,          -- 'signup' | 'change'
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
+
+-- ── Согласия с документами ───────────────────────────────────────────────
+--
+-- Пока приложение семейное, 152-ФЗ к нему не применяется (ст. 1 ч. 2:
+-- обработка для личных и семейных нужд). Таблица заведена заранее, потому
+-- что доказательство согласия невозможно восстановить задним числом:
+-- если оно понадобится, важны дата, версия документа и адрес, с которого
+-- согласие дано, — а их взять будет неоткуда.
+--
+-- Версия документа — часть ключа: изменилась политика, нужно новое согласие.
+CREATE TABLE IF NOT EXISTS user_consents (
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  document    TEXT NOT NULL,          -- 'terms' | 'privacy'
+  version     TEXT NOT NULL,
+  accepted_at TEXT NOT NULL,
+  ip          TEXT,
+  PRIMARY KEY (user_id, document, version)
+);
