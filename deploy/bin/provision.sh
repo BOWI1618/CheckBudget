@@ -136,6 +136,12 @@ fi
 
 # ── nginx ─────────────────────────────────────────────────────────────────
 say "Настраиваю nginx"
+# Набор заголовков безопасности — отдельным файлом: он подключается
+# в каждый блок статики, потому что свой add_header во вложенном блоке
+# отменяет все унаследованные.
+install -d -m 0755 /etc/nginx/snippets
+install -m 0644 "$ROOT/deploy/nginx/security-headers.conf" /etc/nginx/snippets/checkbudget-security.conf
+
 SITE=/etc/nginx/sites-available/checkbudget
 # Конфиг после certbot содержит его правки. Перезаписать файл значило бы
 # снести TLS-блок и редирект, а следом за ними и сайт.

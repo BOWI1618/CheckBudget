@@ -213,6 +213,17 @@ cd /opt/checkbudget && sudo git reset --hard <хеш> && sudo systemctl restart 
 sudo certbot install --cert-name <домен>
 ```
 
+**Заголовки безопасности не приходят на главную страницу.** В nginx
+`add_header` наследуется вложенным блоком только пока у того нет своего:
+появился один — все родительские молча исчезают. Поэтому набор вынесен
+в `/etc/nginx/snippets/checkbudget-security.conf` и подключается явно
+в каждый блок, где задан `Cache-Control`. Проверять надо запросом,
+конфиг выглядит правильным в обоих случаях:
+
+```
+curl -sI https://<домен>/ | grep -i strict-transport
+```
+
 **`ERR_MODULE_NOT_FOUND: .../shared/src/currencies.js`.** Старая сборка
 оставляла первопартийный пакет `@checkbudget/shared` внешним, а он
 экспортирует TypeScript. В разработке путь `./currencies.js` разрешает
