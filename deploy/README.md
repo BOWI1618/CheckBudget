@@ -202,6 +202,18 @@ cd /opt/checkbudget && sudo git reset --hard <хеш> && sudo systemctl restart 
 
 ## 7. Если что-то пошло не так
 
+**`ERR_MODULE_NOT_FOUND: .../shared/src/currencies.js`.** Старая сборка
+оставляла первопартийный пакет `@checkbudget/shared` внешним, а он
+экспортирует TypeScript. В разработке путь `./currencies.js` разрешает
+tsx, Node на сервере ищет настоящий `.js` и не находит. Исправлено:
+сборка вшивает пакет в бандл. Если ошибка появилась — на сервере старый
+код, нужен `git pull` перед `release.sh`.
+
+**`ENOENT: .../dist/schema.sql`.** Драйвер SQLite читает схему рядом
+с собой, а сборка её не переносила. Исправлено: `npm run build` копирует
+файл в `dist`. На PostgreSQL не проявлялось — там схему применяет
+отдельная команда.
+
 **`fatal: detected dubious ownership` при git-командах на сервере.**
 Каталог `/opt/checkbudget` принадлежит пользователю `checkbudget`, а git
 вы запускаете от root (через sudo). Git считает это подозрительным.

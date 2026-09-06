@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
     "start": "node dist/server.js",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=dist/server.js --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --alias:@checkbudget/shared=../shared/src/index.ts --outfile=dist/server.js --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" && cp src/db/schema.sql dist/schema.sql",
     "typecheck": "tsc --noEmit",
     "test": "rm -f data/test.db data/test.db-wal data/test.db-shm && DATABASE_FILE=data/test.db JWT_SECRET=test-secret-1234567890 AUTH_RATE_LIMIT_MAX=1000 API_RATE_LIMIT_MAX=5000 node --import tsx --test src/e2e.test.ts",
     "seed": "tsx src/db/seed.ts",
@@ -24,13 +24,13 @@
     "@fastify/cors": "^10.1.0",
     "@fastify/rate-limit": "^10.3.0",
     "fastify": "^5.12.1",
+    "pg": "^8.23.0",
     "ws": "^8.21.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.1",
-    "esbuild": "^0.24.2",
-    "pg": "^8.23.0"
+    "esbuild": "^0.24.2"
   }
 }
