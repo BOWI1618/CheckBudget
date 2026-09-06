@@ -202,6 +202,17 @@ cd /opt/checkbudget && sudo git reset --hard <хеш> && sudo systemctl restart 
 
 ## 7. Если что-то пошло не так
 
+**`Could not automatically find a matching server block for www.…`** при
+установке сертификата. Сертификат при этом ВЫПУЩЕН — не падает вся
+процедура, а только последний шаг. Certbot ищет server-блок по имени
+из `server_name`, и если сертификат запрошен на два имени, а в конфиге
+указано одно, для второго установить его некуда. Добавьте имя и повторите
+только установку — новый запрос к Let's Encrypt не потребуется:
+
+```
+sudo certbot install --cert-name <домен>
+```
+
 **`ERR_MODULE_NOT_FOUND: .../shared/src/currencies.js`.** Старая сборка
 оставляла первопартийный пакет `@checkbudget/shared` внешним, а он
 экспортирует TypeScript. В разработке путь `./currencies.js` разрешает
