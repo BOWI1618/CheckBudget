@@ -22,6 +22,13 @@ fi
 cd "$APP_DIR"
 say() { printf '\n\033[1m→ %s\033[0m\n' "$1"; }
 
+# Каталог принадлежит пользователю checkbudget, а git здесь выполняется
+# root-ом (он нужен для systemctl и chown). Git это справедливо считает
+# подозрительным ("dubious ownership") и отказывается работать. Разрешаем
+# явно, один раз и без дублей при повторных выкатах.
+git config --global --get-all safe.directory 2>/dev/null | grep -qx "$APP_DIR" \
+  || git config --global --add safe.directory "$APP_DIR"
+
 say "Забираю изменения"
 git fetch --quiet origin
 BEFORE="$(git rev-parse --short HEAD)"

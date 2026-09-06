@@ -202,6 +202,18 @@ cd /opt/checkbudget && sudo git reset --hard <хеш> && sudo systemctl restart 
 
 ## 7. Если что-то пошло не так
 
+**`fatal: detected dubious ownership` при git-командах на сервере.**
+Каталог `/opt/checkbudget` принадлежит пользователю `checkbudget`, а git
+вы запускаете от root (через sudo). Git считает это подозрительным.
+Разрешите каталог один раз:
+
+```
+sudo git config --global --add safe.directory /opt/checkbudget
+```
+
+`release.sh` и `provision.sh` делают это сами; команда нужна только при
+ручных git-вызовах на сервере.
+
 **Служба не поднимается.** `journalctl -u checkbudget -n 50`. Частые
 причины: не задан `JWT_SECRET` (в production он обязателен, приложение
 падает намеренно), неверный пароль в `DATABASE_URL`, не применена схема.

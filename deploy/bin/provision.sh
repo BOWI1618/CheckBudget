@@ -21,6 +21,15 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Клон делается вручную (sudo git clone), потом каталог переходит к
+# пользователю checkbudget, а git продолжают запускать root-ом. Git это
+# считает подозрительным и отказывается работать — разрешаем каталог сразу.
+if command -v git >/dev/null 2>&1; then
+  git config --global --get-all safe.directory 2>/dev/null | grep -qx "$ROOT" \
+    || git config --global --add safe.directory "$ROOT"
+fi
+
 APP_USER=checkbudget
 APP_DIR=/opt/checkbudget
 ENV_DIR=/etc/checkbudget
