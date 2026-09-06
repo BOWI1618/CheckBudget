@@ -134,12 +134,15 @@ sudo /opt/checkbudget/deploy/bin/release.sh
 ## 4. Проверка
 
 ```
-curl -s https://budget.example.com/health
+curl -s http://127.0.0.1:3001/health
 systemctl status checkbudget
 journalctl -u checkbudget -f
 ```
 
 `/health` должен вернуть `{"ok":true,...}` с состоянием пула соединений.
+Проверять его нужно **с самого сервера по localhost**: снаружи nginx
+отдаёт на него 403 намеренно — счётчики соединений и состояние пула БД
+это разведданные для атакующего, наружу им незачем.
 
 Откройте `https://budget.example.com` — должен появиться экран входа.
 Зарегистрируйтесь; первый бюджет создаётся сам.

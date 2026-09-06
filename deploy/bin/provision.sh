@@ -174,7 +174,7 @@ cat <<DONE
 
   1) Сертификат:      sudo certbot --nginx -d $DOMAIN
   2) Первый релиз:    sudo $ROOT/deploy/bin/release.sh
-  3) Проверка:        curl -s https://$DOMAIN/health ; systemctl status checkbudget
+  3) Проверка:        curl -s http://127.0.0.1:3001/health ; systemctl status checkbudget
 
 Секреты лежат в $ENV_FILE (root:$APP_USER, 0640).
 Пароль владельца схемы — в $ENV_DIR/owner.env (root, 0600), приложению он не виден.

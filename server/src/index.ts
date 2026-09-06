@@ -32,7 +32,14 @@ export async function buildApp() {
     // Логи не должны содержать сумм, email и токенов.
     disableRequestLogging: true,
     bodyLimit: 256 * 1024,
-    trustProxy: config.isProduction,
+    // Доверяем ТОЛЬКО петле, а не `true`. Иначе Fastify берёт клиентский
+    // IP из левого края X-Forwarded-For, а nginx его лишь дополняет своим:
+    // клиент присылает `X-Forwarded-For: <любой>`, и req.ip становится
+    // подконтрольным ему. На этом req.ip держится ключ анти-перебора
+    // на /auth/* — то есть перебор пароля обходился бы сменой заголовка.
+    // При доверии только 127.0.0.1 (nginx ходит с петли) req.ip — реальный
+    // адрес клиента, а подставленный заголовок игнорируется.
+    trustProxy: config.isProduction ? 'loopback' : false,
   });
 
   /**
