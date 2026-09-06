@@ -4,7 +4,8 @@ import { useApp, useLookups } from '../data/hooks.js';
 import { Card, EmptyState, Segmented } from '../components/ui.js';
 import { RankedBars, StackedMonths, AreaLine, type Slice } from '../components/charts.js';
 import { CategoryDot } from '../components/ui.js';
-import { periodBounds, formatPeriod, periodGen, periodPrep, lastMonths, shortMonth, shiftPeriod, formatShortDate } from '../lib/dates.js';
+import { periodBounds, formatPeriod, periodGen, periodPrep, lastMonths, shortMonth, shiftPeriod,
+  formatShortDate, currentPeriod, todayIso } from '../lib/dates.js';
 
 type Kind = 'expense' | 'income';
 
@@ -114,7 +115,11 @@ export function AnalyticsScreen({ period }: { period: string }) {
     //
     // Порог тоже денежный: сдвиг меньше 2% месячного итога — шум.
     const noise = Math.max(1, Math.round(current * 0.02));
-    const movers = priorLoaded
+    // Если в прошлом месяце не было НИЧЕГО, сравнивать не с чем — и все
+    // статьи формально «новые». Перечислять их значит выдавать за вывод
+    // то, что выводом не является: соседняя карточка в этом же случае
+    // честно пишет «сравнивать не с чем».
+    const movers = priorLoaded && prior > 0
       // Объединение, а не только текущие статьи: если на чём-то перестали
       // тратить совсем, этой статьи в этом месяце нет — а это ровно то
       // изменение, ради которого карточку и читают.
@@ -148,7 +153,13 @@ export function AnalyticsScreen({ period }: { period: string }) {
     ? Math.round(((analysis.current - analysis.prior) / analysis.prior) * 100)
     : null;
   const monthLabel = formatPeriod(period).toLowerCase();
-  const days = Math.max(1, Number(periodBounds(period).to.slice(8, 10)));
+  // Для ТЕКУЩЕГО месяца делим на прошедшие дни, а не на все тридцать:
+  // 38 050 ₽ за шесть дней — это 6 342 ₽ в день, а не 1 268 ₽. Деление
+  // на полный месяц занижает расход в пять раз и создаёт ложное ощущение
+  // запаса ровно тогда, когда месяц ещё можно поправить.
+  const bounds = periodBounds(period);
+  const elapsed = period === currentPeriod() ? todayIso() : bounds.to;
+  const days = Math.max(1, Number(elapsed.slice(8, 10)));
 
   return (
     <div className="stack">
@@ -202,7 +213,9 @@ export function AnalyticsScreen({ period }: { period: string }) {
           {analysis.movers.length === 0 ? (
             <span className="kpi__sub" style={{ marginTop: 6 }}>
               {analysis.priorLoaded
-                ? 'Ни одна статья не сдвинулась заметно.'
+                ? (analysis.prior > 0
+                  ? 'Ни одна статья не сдвинулась заметно.'
+                  : `В ${periodPrep(analysis.previous)} операций не было — сравнивать не с чем.`)
                 : 'Прошлый месяц ещё не загружен — пролистайте период назад стрелкой в шапке.'}
             </span>
           ) : (
@@ -237,9 +250,13 @@ export function AnalyticsScreen({ period }: { period: string }) {
       <Card className="card--pad">
         <header className="card__head">
           <h2 className="card__title">Накопительно за месяц</h2>
-          <span className="card__note">
-            пунктир — темп {periodGen(analysis.previous)}; выше него значит тратим быстрее
-          </span>
+          {/* Пунктир рисуется только при данных за прошлый месяц —
+              подпись не должна обещать линию, которой нет. */}
+          {analysis.prior > 0 && (
+            <span className="card__note">
+              пунктир — темп {periodGen(analysis.previous)}; выше него значит тратим быстрее
+            </span>
+          )}
         </header>
         {analysis.current === 0 ? (
           <EmptyState icon="chart" title="Данных за период нет" />
