@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Role } from '@checkbudget/shared';
 import { store } from '../data/store.js';
 import { useApp } from '../data/hooks.js';
-import { Card, CardTitle, Button, Sheet, Field } from '../components/ui.js';
+import { Card, CardTitle, Button, Sheet, Field, Select } from '../components/ui.js';
 import { Icon } from '../components/Icon.js';
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -60,14 +60,14 @@ export function MembersScreen() {
 
               {isOwner && !isMe && member.role !== 'owner' ? (
                 <div className="row" style={{ gap: 6 }}>
-                  <select
-                    className="select" style={{ width: 'auto', padding: '6px 10px', fontSize: 'var(--t-small)' }}
+                  <Select
+                    compact style={{ width: 'auto' }}
                     value={member.role}
                     onChange={(e) => store.changeMemberRole(member.userId, e.target.value as 'editor' | 'viewer')}
                   >
                     <option value="editor">Участник</option>
                     <option value="viewer">Наблюдатель</option>
-                  </select>
+                  </Select>
                   <Button variant="ghost" size="sm" icon="x" title="Исключить"
                           onClick={() => setRemoving(member.userId)} />
                 </div>
@@ -136,11 +136,11 @@ export function MembersScreen() {
           </>
         ) : (
           <Field label="Роль приглашаемого" hint={ROLE_HINT[inviteRole]}>
-            <select className="select" value={inviteRole}
+            <Select value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}>
               <option value="editor">Участник — может вести операции</option>
               <option value="viewer">Наблюдатель — только просмотр</option>
-            </select>
+            </Select>
           </Field>
         )}
       </Sheet>

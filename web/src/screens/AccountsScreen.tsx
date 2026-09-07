@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatMoney, parseAmount, toInputValue, CURRENCIES, type Account } from '@checkbudget/shared';
 import { store } from '../data/store.js';
 import { useApp, useCanEdit } from '../data/hooks.js';
-import { Card, CardTitle, EmptyState, Button, Sheet, Field, CategoryDot } from '../components/ui.js';
+import { Card, CardTitle, EmptyState, Button, Sheet, Field, Select, CategoryDot } from '../components/ui.js';
 
 const TYPES: Array<{ value: Account['type']; label: string; icon: string }> = [
   { value: 'card', label: 'Карта', icon: 'card' },
@@ -160,9 +160,9 @@ function AccountSheet({
       </Field>
 
       <Field label="Тип">
-        <select className="select" value={type} onChange={(e) => setType(e.target.value as Account['type'])}>
+        <Select value={type} onChange={(e) => setType(e.target.value as Account['type'])}>
           {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
+        </Select>
       </Field>
 
       {/* Валюту счёта нельзя менять после создания: это перевело бы все
@@ -171,12 +171,12 @@ function AccountSheet({
         label="Валюта"
         hint={isNew ? 'Операции по счёту ведутся в этой валюте' : 'Валюту существующего счёта изменить нельзя'}
       >
-        <select className="select" value={currency} disabled={!isNew}
+        <Select value={currency} disabled={!isNew}
                 onChange={(e) => setCurrency(e.target.value)}>
           {CURRENCIES.map((c) => (
             <option key={c.code} value={c.code}>{c.code} — {c.nameRu}</option>
           ))}
-        </select>
+        </Select>
       </Field>
 
       <Field label={`Начальный остаток, ${currency}`}

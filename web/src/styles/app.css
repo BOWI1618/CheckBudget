@@ -406,7 +406,20 @@
 }
 .input::placeholder { color: var(--ink-3); }
 .textarea { resize: vertical; min-height: 72px; }
-.select { appearance: none; }
+/* Список: системная стрелка снята, своя лежит поверх поля. Отступ справа
+   освобождает под неё место — без него длинное название заезжало под неё. */
+.select { appearance: none; padding-right: 40px; cursor: pointer; }
+.select-wrap { position: relative; display: block; }
+.select-wrap > svg {
+  position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+  color: var(--ink-3); pointer-events: none;
+}
+/* Узкий список в строке участника: те же правила, меньше размеры. */
+.select-wrap--compact > svg { right: 8px; }
+.select-wrap--compact .select { padding: 6px 26px 6px 10px; font-size: var(--t-small); }
+/* Пальцем в 31 px не попасть: на сенсорных экранах узкий список тоже
+   обязан быть не меньше 44 px. */
+@media (pointer: coarse) { .select-wrap--compact .select { min-height: 44px; } }
 .search { position: relative; }
 .search .input { padding-left: 40px; border-radius: var(--r-pill); }
 .search > svg {

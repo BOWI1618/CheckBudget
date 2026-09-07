@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatMoney, parseAmount, toInputValue, getCurrency, type Transaction } from '@checkbudget/shared';
 import { store } from '../data/store.js';
 import { useApp, useCategoryTree, useLookups } from '../data/hooks.js';
-import { Sheet, Button, Field, Segmented } from '../components/ui.js';
+import { Sheet, Button, Field, Select, Segmented } from '../components/ui.js';
 import { Icon } from '../components/Icon.js';
 import { todayIso } from '../lib/dates.js';
 
@@ -184,7 +184,7 @@ export function AddTransactionSheet({
               </button>
             ))}
           </div>
-          <select className="select" value={categoryId ?? ''} style={{ marginTop: 8 }}
+          <Select value={categoryId ?? ''} style={{ marginTop: 8 }}
                   onChange={(e) => setCategoryId(e.target.value || null)}>
             <option value="">Все категории…</option>
             {tree.map((root) => (
@@ -195,31 +195,31 @@ export function AddTransactionSheet({
                 ))}
               </optgroup>
             ))}
-          </select>
+          </Select>
         </Field>
       )}
 
       <Field label={kind === 'transfer' ? 'Откуда' : 'Счёт'}>
-        <select className="select" value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value)}>
+        <Select value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value)}>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name} · {formatMoney(a.balanceMinor, a.currency)}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
 
       {kind === 'transfer' && (
         <>
           <Field label="Куда">
-            <select className="select" value={counterAccountId ?? ''}
+            <Select value={counterAccountId ?? ''}
                     onChange={(e) => setCounterAccountId(e.target.value)}>
               {accounts.filter((a) => a.id !== accountId).map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name} · {formatMoney(a.balanceMinor, a.currency)}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           {crossCurrency && counterAccount && (
             <Field

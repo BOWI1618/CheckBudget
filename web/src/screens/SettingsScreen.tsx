@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CURRENCIES, countOf } from '@checkbudget/shared';
 import { store } from '../data/store.js';
 import { useApp } from '../data/hooks.js';
-import { Card, CardTitle, Button, Field, Sheet, Segmented } from '../components/ui.js';
+import { Card, CardTitle, Button, Field, Select, Sheet, Segmented } from '../components/ui.js';
 import { Icon } from '../components/Icon.js';
 
 export function SettingsScreen() {
@@ -55,15 +55,14 @@ export function SettingsScreen() {
           label="Базовая валюта нового бюджета"
           hint="Валюта, в которой считается вся аналитика. У каждого бюджета она своя."
         >
-          <select
-            className="select"
+          <Select
             value={settings?.baseCurrency ?? 'RUB'}
             onChange={(e) => store.updateSettings({ baseCurrency: e.target.value })}
           >
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.nameRu}</option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         {data && (
@@ -138,11 +137,11 @@ export function SettingsScreen() {
                  onChange={(e) => setBudgetName(e.target.value)} placeholder="Семейный бюджет" />
         </Field>
         <Field label="Базовая валюта" hint="Изменить её потом будет непросто — выберите основную валюту жизни">
-          <select className="select" value={budgetCurrency} onChange={(e) => setBudgetCurrency(e.target.value)}>
+          <Select value={budgetCurrency} onChange={(e) => setBudgetCurrency(e.target.value)}>
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.nameRu}</option>
             ))}
-          </select>
+          </Select>
         </Field>
       </Sheet>
     </div>

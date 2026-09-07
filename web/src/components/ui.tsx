@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode, type CSSProperties } from 'react';
+import { useEffect, useRef, type ReactNode, type CSSProperties,
+  type SelectHTMLAttributes } from 'react';
 import { Icon } from './Icon.js';
 
 export function Card({
@@ -55,6 +56,29 @@ export function Field({
       {error ? <span className="field__error">{error}</span>
         : hint ? <span className="field__hint">{hint}</span> : null}
     </label>
+  );
+}
+
+/**
+ * Выпадающий список.
+ *
+ * Обёртка нужна ради стрелки. `appearance: none` снимает системную —
+ * без замены поле выглядит ровно как строка ввода, и по нему не видно
+ * ни того, что это список, ни того, что он вообще нажимается.
+ *
+ * Стрелка добавлена разметкой, а не фоновой картинкой: у иконки тогда
+ * тот же контур 1,8 и тот же цвет из токена, что и у остальных.
+ * Фоновая картинка не умеет читать переменные, и её пришлось бы
+ * дублировать под каждую тему — три копии одного пути ради одного цвета.
+ */
+export function Select({
+  children, compact, style, className = '', ...rest
+}: SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }) {
+  return (
+    <span className={`select-wrap ${compact ? 'select-wrap--compact' : ''}`} style={style}>
+      <select className={`select ${className}`} {...rest}>{children}</select>
+      <Icon name="chevronDown" size={compact ? 15 : 18} />
+    </span>
   );
 }
 
