@@ -90,17 +90,33 @@ export function Sheet({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
+  /**
+   * Фокус и блокировка прокрутки — РОВНО на открытие, и `onClose` в
+   * зависимостях быть не может.
+   *
+   * Родитель передаёт стрелку прямо в разметке, поэтому на каждом его
+   * рендере она новая. Пока эффект зависел от неё, любое нажатие клавиши
+   * в поле внутри окна перезапускало эффект, и `focus()` уводил фокус
+   * с поля на сам диалог: человек вводил один символ, после чего ввод
+   * «замирал». Ломались все окна с полями, а не только лимиты.
+   *
+   * Фокус на диалоге нужен для Escape и экранных читалок, но забирать его
+   * у поля с autoFocus нельзя — отсюда проверка `contains`.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const node = ref.current;
+    if (node && !node.contains(document.activeElement)) node.focus();
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    ref.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!open) return null;
