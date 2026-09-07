@@ -142,33 +142,59 @@ export function StackedMonths({
 }
 
 export function AreaLine({
-  values, labels, currency, height = 190, color = 'var(--accent)', pace, paceLabel,
+  values, labels, currency, height = 200, color = 'var(--accent)', pace, paceLabel, elapsed,
 }: {
   values: number[]; labels: string[]; currency: string;
   height?: number; color?: string;
   /** Итог для равномерного темпа — по нему рисуется опорная прямая. */
   pace?: number;
   paceLabel?: string;
+  /** Сколько дней месяца уже прожито. Дальше рисовать нечего. */
+  elapsed?: number;
 }) {
   const [active, setActive] = useState<number | null>(null);
   const entrance = useEntrance();
-  // Идентификаторы градиентов уникальны на страницу: два графика с одним
-  // id ссылались бы на одну заливку, и второй перекрасился бы в цвет первого.
+  // Идентификаторы уникальны на страницу: два графика с одним id ссылались
+  // бы на одну заливку, и второй перекрасился бы в цвет первого.
   const uid = useId().replace(/:/g, '');
   if (values.length === 0) return null;
 
   const width = 600;
-  const min = Math.min(...values, 0);
-  const max = Math.max(...values, pace ?? 1, 1);
+
+  /**
+   * Линия ведётся только по прожитым дням.
+   *
+   * Раньше она шла до конца месяца, и хвост ненаступивших дней рисовался
+   * ровной полкой на уровне сегодняшнего итога. График показывал как
+   * свершившийся факт то, чего ещё не было: 6 сентября кривая обещала,
+   * что 30-го расход останется прежним.
+   */
+  const drawn = Math.max(1, Math.min(values.length, elapsed ?? values.length));
+  const partial = drawn < values.length;
+  const shown = values.slice(0, drawn);
+
+  // Запас сверху и снизу. Накопительная кривая монотонна, её последняя
+  // точка — всегда максимум, и без запаса она упирается в край карточки.
+  const padTop = 26;
+  const padBottom = 18;
+  const min = Math.min(...shown, 0);
+  const max = Math.max(...shown, pace ?? 0, 1) * 1.12;
   const span = max - min || 1;
   const stepX = values.length > 1 ? width / (values.length - 1) : width;
-  const yOf = (value: number) => height - ((value - min) / span) * (height - 26) - 13;
+  const plot = height - padTop - padBottom;
+  const yOf = (value: number) => height - padBottom - ((value - min) / span) * plot;
 
-  const points = values.map((value, i) => ({ x: i * stepX, y: yOf(value) }));
+  const points = shown.map((value, i) => ({ x: i * stepX, y: yOf(value) }));
+  const last = points[points.length - 1]!;
+  const baseY = yOf(0);
 
   const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const area = `${line} L${width},${height} L0,${height} Z`;
+  // Заливка замыкается на нулевой линии, а не на нижнем крае кадра:
+  // иначе она свисает ниже собственной оси.
+  const area = `${line} L${last.x.toFixed(1)},${baseY.toFixed(1)} L0,${baseY.toFixed(1)} Z`;
   const focused = active !== null ? points[active] : null;
+  // Подсказка идёт за точкой, но не вылезает за карточку.
+  const tipAt = focused ? Math.min(86, Math.max(14, (focused.x / width) * 100)) : 50;
 
   return (
     <div className="area">
@@ -178,7 +204,9 @@ export function AreaLine({
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const ratio = (e.clientX - rect.left) / rect.width;
-          setActive(Math.max(0, Math.min(values.length - 1, Math.round(ratio * (values.length - 1)))));
+          // Наведение за пределы прожитого прижимается к сегодняшнему дню:
+          // о будущих днях сказать нечего.
+          setActive(Math.max(0, Math.min(drawn - 1, Math.round(ratio * (values.length - 1)))));
         }}
         onMouseLeave={() => setActive(null)}
       >
@@ -190,7 +218,43 @@ export function AreaLine({
             <stop offset="46%" stopColor={color} stopOpacity="0.10" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
+
+          {/*
+            Проявление растущей шторкой, а не штриховкой по длине пути.
+            Прежний приём — pathLength=1 со strokeDasharray=1 — молча
+            не работал: рядом стоит vector-effect="non-scaling-stroke",
+            при котором браузер считает штрихи в экранных пикселях и
+            нормировку pathLength игнорирует. Кадр растянут по горизонтали,
+            экранная длина не совпадает с пользовательской, и «полный»
+            штрих закрывал лишь часть линии — хвост кривой не дорисовывался
+            никогда, а выглядело это как обрыв данных.
+          */}
+          <clipPath id={`reveal-${uid}`} clipPathUnits="userSpaceOnUse">
+            <rect
+              x={-12} y={-12} width={width + 24} height={height + 24}
+              style={{
+                transformBox: 'view-box', transformOrigin: '0 0',
+                transform: `scaleX(${entrance})`,
+                transition: 'transform var(--dur-chart) var(--ease)',
+              }}
+            />
+          </clipPath>
         </defs>
+
+        {/* Ненаступившая часть месяца залита отдельным тоном. Пустое место
+            само по себе читается как обрыв данных; названная пустота
+            сообщает то, ради чего график и смотрят, — месяц ещё идёт. */}
+        {partial && (
+          <rect
+            x={last.x} y={padTop - 10} width={width - last.x} height={baseY - padTop + 10}
+            className="area__ahead"
+            style={{ opacity: entrance, transition: 'opacity var(--dur-slow) var(--ease-soft) 200ms' }}
+          />
+        )}
+
+        {/* Нулевая линия: без неё заливке не на чем стоять. */}
+        <line x1="0" y1={baseY} x2={width} y2={baseY} className="area__base"
+              vectorEffect="non-scaling-stroke" />
 
         {/* Опорная прямая равномерного темпа: без неё накопительная кривая
             растёт всегда и сама по себе ни о чём не сообщает. */}
@@ -203,28 +267,36 @@ export function AreaLine({
           />
         )}
 
-        <path
-          d={area} fill={`url(#fill-${uid})`}
-          style={{ opacity: entrance, transition: 'opacity var(--dur-slow) var(--ease-soft) 260ms' }}
-        />
+        <g clipPath={`url(#reveal-${uid})`}>
+          <path
+            d={area} fill={`url(#fill-${uid})`}
+            style={{ opacity: entrance, transition: 'opacity var(--dur-slow) var(--ease-soft) 260ms' }}
+          />
 
-        {/* Тень кривой — смещённая вниз размытая копия её самой: без неё
-            линия и заливка лежат в одной плоскости. */}
-        <path
-          className="area__cast"
-          d={line} fill="none" stroke={color} strokeWidth="6"
-          transform="translate(0 7)"
-          strokeLinejoin="round" strokeLinecap="round"
-          pathLength={1} strokeDasharray={1} strokeDashoffset={1 - entrance}
-          style={{ transition: 'stroke-dashoffset var(--dur-chart) var(--ease)' }}
-        />
+          {/* Тень кривой — смещённая вниз размытая копия её самой: без неё
+              линия и заливка лежат в одной плоскости. Толщина не должна
+              тянуться вместе с кадром, иначе тень расплывается вбок. */}
+          <path
+            className="area__cast"
+            d={line} fill="none" stroke={color} strokeWidth="6"
+            transform="translate(0 7)" vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round" strokeLinecap="round"
+          />
 
-        <path
-          d={line} fill="none" stroke={color} strokeWidth="2.5"
-          vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
-          pathLength={1} strokeDasharray={1} strokeDashoffset={1 - entrance}
-          style={{ transition: 'stroke-dashoffset var(--dur-chart) var(--ease)' }}
-        />
+          <path
+            d={line} fill="none" stroke={color} strokeWidth="2.5"
+            vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
+          />
+        </g>
+
+        {/* Точка «сегодня» видна в покое, а не только при наведении:
+            в скрытой вкладке анимации заморожены, и покой обязан быть
+            нормальным состоянием, а не первым кадром. */}
+        {active === null && (
+          <circle cx={last.x} cy={last.y} r="4.5" fill="var(--surface)" stroke={color} strokeWidth="2.5"
+                  vectorEffect="non-scaling-stroke"
+                  style={{ opacity: entrance, transition: 'opacity var(--dur-slow) var(--ease-soft) 380ms' }} />
+        )}
 
         {focused && (
           <>
@@ -237,10 +309,12 @@ export function AreaLine({
         )}
       </svg>
 
-      {/* Подпись — плашка, а не текст поверх графика: на заливке она
-          сливалась с ней, а в тёмной теме исчезала совсем. */}
+      {/* Подсказка — плашка, а не текст поверх графика: на заливке она
+          сливалась с ней, а в тёмной теме исчезала совсем. Идёт за точкой:
+          прибитая к правому углу, она называла день, на который никто
+          не наводил. */}
       {active !== null && (
-        <div className="area__tip">
+        <div className="area__tip" style={{ left: `${tipAt}%` }}>
           <strong>{labels[active]}</strong>
           <span className="money">{formatMoney(values[active] ?? 0, currency)}</span>
         </div>
@@ -248,8 +322,37 @@ export function AreaLine({
 
       <div className="area__axis">
         <span>{labels[0]}</span>
-        <span>{labels[labels.length - 1]} · {formatMoney(values[values.length - 1] ?? 0, currency)}</span>
+        {/* У незавершённого месяца справа стоит его последний день, а итог
+            подписан у самой точки «сегодня». Раньше сумма стояла под
+            30-м числом, хотя относилась к шестому. */}
+        <span className={partial ? 'is-muted' : undefined}>
+          {partial
+            ? labels[labels.length - 1]
+            : `${labels[labels.length - 1]} · ${formatMoney(values[values.length - 1] ?? 0, currency)}`}
+        </span>
       </div>
+
+      {/* Итог подписан у самой точки «сегодня» — и только пока на график
+          не навели: иначе две плашки говорили бы об одном и том же. */}
+      {partial && active === null && (
+        <div
+          className="area__now"
+          style={{
+            left: `${(last.x / width) * 100}%`,
+            top: `${last.y}px`,
+            // Слева от точки подпись легла бы на саму кривую: она приходит
+            // снизу слева. Справа от точки пусто — там подписи и место.
+            // У края кадра стороны меняются местами.
+            transform: last.x / width > 0.62
+              ? 'translate(calc(-100% - 12px), -50%)'
+              : 'translate(12px, -50%)',
+            alignItems: last.x / width > 0.62 ? 'flex-end' : 'flex-start',
+          }}
+        >
+          <strong>{labels[drawn - 1]}</strong>
+          <span className="money">{formatMoney(shown[drawn - 1] ?? 0, currency)}</span>
+        </div>
+      )}
 
       {pace !== undefined && pace > 0 && paceLabel && (
         <p className="area__legend"><span className="area__legend-dash" />{paceLabel}</p>

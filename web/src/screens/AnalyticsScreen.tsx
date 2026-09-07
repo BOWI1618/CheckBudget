@@ -264,6 +264,9 @@ export function AnalyticsScreen({ period }: { period: string }) {
           <AreaLine
             values={analysis.cumulative} labels={analysis.days} currency={base}
             color={kind === 'expense' ? 'var(--accent)' : 'var(--income)'}
+            // Те же прожитые дни, что и у среднего за день: кривая не должна
+            // заходить в ненаступившую часть месяца.
+            elapsed={days}
             pace={analysis.prior}
             paceLabel={`Темп ${periodGen(analysis.previous)}`}
           />

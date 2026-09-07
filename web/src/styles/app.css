@@ -774,24 +774,43 @@
 .area__cursor { stroke: var(--line-strong); stroke-width: 1; }
 .area__dot-halo { opacity: 0.22; }
 .area__cast { opacity: 0.16; filter: blur(4px); }
-.area__tip {
-  position: absolute; top: 8px; right: 10px;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
-  padding: 8px 12px; border-radius: var(--r-sm);
-  background: var(--panel);
-  box-shadow: var(--shadow-pop);
+/* Нулевая линия. Слабее курсора: это опора, а не показание. */
+.area__base { stroke: var(--line); stroke-width: 1; }
+/* Дни, которые ещё не наступили. Заливка сплошным тоном, а не прозрачностью:
+   под ней лежит карточка, и полупрозрачный серый дал бы разный цвет
+   в двух темах. */
+.area__ahead { fill: var(--surface-2); }
+/* Плашка над графиком: подсказка при наведении и постоянная подпись
+   «сегодня». Обе идут за точкой по горизонтали, поэтому сдвигаются
+   на половину собственной ширины. */
+.area__tip, .area__now {
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 12px; border-radius: var(--r-sm);
+  transform: translateX(-50%);
+  white-space: nowrap;
   pointer-events: none;
 }
-.area__tip strong {
+.area__tip { top: 8px; background: var(--panel); box-shadow: var(--shadow-pop); }
+/* Точка «сегодня» у правого края кадра — дот рисуется поверх границы,
+   и без этого его половина срезается. */
+.area svg { overflow: visible; }
+.area__tip strong, .area__now strong {
   font-size: var(--t-micro); font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
 }
-.area__tip .money { font-size: var(--t-base); font-weight: 500; color: var(--ink); }
+.area__tip .money, .area__now .money { font-size: var(--t-base); font-weight: 500; color: var(--ink); }
+/* Подпись «сегодня» стоит на заливке, а не на панели, поэтому без плашки
+   и тени: второй прямоугольник на графике спорил бы с подсказкой. */
+.area__now .money { font-weight: 600; }
 .area__legend { display: flex; align-items: center; gap: var(--s2); margin: var(--s3) 0 0; font-size: var(--t-small); color: var(--ink-3); }
 .area__legend-dash { width: 22px; height: 0; flex: none; border-top: 1.5px dashed var(--faint); }
 .area__axis { display: flex; margin-top: 10px; font-size: var(--t-small); color: var(--ink-3); }
 .area__axis span { flex: 1; }
 .area__axis span:last-child { text-align: right; font-weight: 600; color: var(--ink); }
+/* У незавершённого месяца справа стоит только дата его конца: сумма туда
+   не относится, она подписана у точки «сегодня». */
+.area__axis span.is-muted { font-weight: 500; color: var(--ink-3); }
 
 /* ══ Показатели ═════════════════════════════════════════════════════════ */
 
